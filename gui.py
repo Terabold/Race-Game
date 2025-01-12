@@ -1,7 +1,7 @@
 import pygame
 import sys
+import cv2
 from Constants import *
-
 class GameMenu:
     def __init__(self):
         pygame.init()
@@ -12,6 +12,8 @@ class GameMenu:
         self.font_big = pygame.font.Font(FONT, 45)
         self.font_big = pygame.font.Font(FONT, 45)
         self.font_small = pygame.font.Font(FONT, 33)
+        self.font_title = pygame.font.Font(FONT, 100)  
+
         
         # Selections
         self.sound_enabled = True
@@ -29,6 +31,22 @@ class GameMenu:
         pygame.mixer.music.set_volume(0.02)  # Default volume
         pygame.mixer.music.play(-1)  # Loop music
 
+        self.video_path = LOBBY_VIDEO
+        self.cap = cv2.VideoCapture(self.video_path)
+        self.video_surface = pygame.Surface((WIDTH, HEIGHT))
+
+    def render_video_frame(self):
+        ret, frame = self.cap.read()
+        if not ret:
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Restart the video
+            ret, frame = self.cap.read()
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = cv2.resize(frame, (WIDTH, HEIGHT))
+        pygame_frame = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
+        self.screen.blit(pygame_frame, (0, 0))
+
+
     def draw_text(self, text, font, color, x, y):
         render = font.render(text, True, color)
         text_rect = render.get_rect(center=(x, y))
@@ -38,7 +56,7 @@ class GameMenu:
         """Creates a radio button."""
         color = GREEN if selected else FOGGRAY
         pygame.draw.circle(self.screen, color, (x, y), 15)
-        pygame.draw.circle(self.screen, BLACK, (x, y), 15, 2)
+        pygame.draw.circle(self.screen, WHITE, (x, y), 15, 2)
 
     def create_button(self, x, y, width, height, text, color, disabled=False):
         rect = pygame.Rect(x - width//2, y - height//2, width, height)
@@ -52,9 +70,9 @@ class GameMenu:
         else:
             pygame.draw.rect(self.screen, color, rect)
         
-        pygame.draw.rect(self.screen, BLACK, rect, 2)
+        pygame.draw.rect(self.screen, WHITE, rect, 2)
         
-        text_color = FOGGRAY if disabled else BLACK
+        text_color = FOGGRAY if disabled else WHITE
         text_surface = self.font_small.render(text, True, text_color)
         text_rect = text_surface.get_rect(center=rect.center)
         self.screen.blit(text_surface, text_rect)
@@ -76,15 +94,13 @@ class GameMenu:
 
         while running:
             # Load and scale background
-            background = pygame.image.load(MENU).convert()
-            background = pygame.transform.scale(background, (WIDTH, HEIGHT))
-            self.screen.blit(background, (0, 0))
-            
+            self.render_video_frame()
             # Title
-            self.draw_text("Race Game Car-Drift", self.font_big, DODGERBLUE, center_x, 50)
+            self.draw_text("Time Drift", self.font_title, BLACK, center_x + 3, 103)
+            self.draw_text("Time Drift", self.font_title, RED, center_x, 100)
             
             # Player 1 Section
-            self.draw_text("Player 1", self.font_small, BLACK, center_x - 300, player_section_top)
+            self.draw_text("Player 1", self.font_small, WHITE, center_x - 300, player_section_top)
             
             # Player 1 Type Selection
             player1_buttons = [
@@ -100,7 +116,7 @@ class GameMenu:
             ]
             
             # Player 1 Car Color Selection (horizontally to the left)
-            self.draw_text("Car Color", self.font_small, BLACK, center_x - 500, player_section_top + section_spacing)
+            self.draw_text("Car Color", self.font_small, WHITE, center_x - 500, player_section_top + section_spacing)
             p1_color_buttons = [
                 self.create_button(
                     center_x - 500,
@@ -146,13 +162,13 @@ class GameMenu:
             ]
             
             # Settings toggles in the same row
-            self.draw_text("Lobby Music", self.font_small, BLACK, center_x - 200, settings_section_y)
+            self.draw_text("Lobby Music", self.font_small, WHITE, center_x - 200, settings_section_y)
             self.create_radio_button(center_x - 200, settings_section_y + 50, self.music_enabled)
 
-            self.draw_text("Game Sound", self.font_small, BLACK, center_x, settings_section_y)
+            self.draw_text("Game Sound", self.font_small, WHITE, center_x, settings_section_y)
             self.create_radio_button(center_x, settings_section_y + 50, self.sound_enabled)
 
-            self.draw_text("Auto Respawn", self.font_small, BLACK, center_x + 200, settings_section_y)
+            self.draw_text("Auto Respawn", self.font_small, WHITE, center_x + 200, settings_section_y)
             self.create_radio_button(center_x + 200, settings_section_y + 50, self.auto_respawn)
 
             # Start Button (at the bottom)

@@ -17,105 +17,84 @@ def blit_rotate_center(game, image, top_left, angle):
 class Environment:
     def __init__(self, surface, sound_enabled=True, auto_respawn=False, car_color="Red") -> None:
         self.surface = surface
-        self.grass = pygame.image.load(GRASS).convert()
-        self.cached_grass = pygame.transform.scale(self.grass, (WIDTH, HEIGHT))
+        # Pre-scale grass texture once during initialization
+        self.grass = pygame.transform.scale(
+            pygame.image.load(GRASS).convert(), (WIDTH, HEIGHT)
+        )
         self.current_level = 0
         self.auto_respawn = auto_respawn
         self.sound_enabled = sound_enabled
         
+        # Game state initialization
         self.paused = False
-        start_pos = LEVELS[0]["car_start_pos"]
-        self.car = Car(start_pos[0], start_pos[1], car_color)
-        
-        # Initialize checkpoint group
-        self.checkpoint_group = pygame.sprite.Group()
-        self.current_checkpoint_index = 0
-        
-        # Initialize time bonus group before loading level
-        self.time_bonus_group = pygame.sprite.Group()
-        
-        self.remaining_time = LEVELS[0]["target_time"]
         self.game_state = "countdown"
         self.previous_state = None
         
+        # Initialize game elements
+        start_pos = LEVELS[0]["car_start_pos"]
+        self.car = Car(start_pos[0], start_pos[1], car_color)
+        self.checkpoint_group = pygame.sprite.Group()
+        self.time_bonus_group = pygame.sprite.Group()
+        self.current_checkpoint_index = 0
+        self.remaining_time = LEVELS[0]["target_time"]
+        
         # Setup sound before loading level
         self.setup_sound()
-        
-        # Load level last after all groups are initialized
         self.load_level(self.current_level)
         
     def load_level(self, level_index):
         level_data = LEVELS[level_index]
         self.current_level_data = level_data
         
-        # Basic level loading
+        # Load and convert track images
         self.track = pygame.image.load(level_data["track_image"]).convert_alpha()
         self.track_border = pygame.image.load(level_data["border_image"]).convert_alpha()
         self.track_border_mask = pygame.mask.from_surface(self.track_border)
         
-        self.finish_line = pygame.image.load(FINISHLINE).convert_alpha()
+        # Load and scale finish line
+        finish_img = pygame.image.load(FINISHLINE).convert_alpha()
         finishline_width, finishline_height = level_data["finishline_size"]
-        self.finish_line = pygame.transform.scale(self.finish_line, (finishline_width, finishline_height))
+        self.finish_line = pygame.transform.scale(finish_img, (finishline_width, finishline_height))
         self.finish_line_position = level_data["finishline_pos"]
         self.finish_mask = pygame.mask.from_surface(self.finish_line)
         
-        # Reset car position
-        start_x, start_y = level_data["car_start_pos"]
-        self.car.reset(start_x, start_y)
-        
         # Reset game state
+        self.car.reset(*level_data["car_start_pos"])
         self.remaining_time = level_data["target_time"]
         self.game_state = "countdown"
         
-        # Clear existing checkpoints
+        # Clear and reload checkpoints
         self.checkpoint_group.empty()
         self.current_checkpoint_index = 0
         
-        # Load checkpoints
-        if "checkpoints" in level_data:
-            for i, checkpoint_data in enumerate(level_data["checkpoints"]):
-                checkpoint = Checkpoint(
-                    checkpoint_data["pos"],
-                    checkpoint_data["size"],
-                    i
-                )
-                self.checkpoint_group.add(checkpoint)
+        for i, checkpoint_data in enumerate(level_data.get("checkpoints", [])):
+            self.checkpoint_group.add(Checkpoint(
+                checkpoint_data["pos"],
+                checkpoint_data["size"],
+                i
+            ))
 
-        # Clear and regenerate time bonuses
+        # Reset and generate time bonuses
         self.time_bonus_group.empty()
         track_name = f"track{level_index + 1}"
-        
-        # Debug print to verify points are available
-        print(f"Loading bonuses for {track_name}")
-        print(f"Available positions: {len(TRACK_BONUS_POINTS.get(track_name, []))}")
-        
-        time_bonus_generator = TimeBonus(0, 0)  # Create a dummy bonus to access the generator
-        time_bonuses = time_bonus_generator.generate_bonuses(track_name, num_bonuses=10)
-        print(f"Generated {len(time_bonuses)} time bonuses")
-        
-        self.time_bonus_group.add(time_bonuses)
+        time_bonus_generator = TimeBonus(0, 0)
+        self.time_bonus_group.add(time_bonus_generator.generate_bonuses(track_name, num_bonuses=10))
 
     def get_closest_active_checkpoint(self):
-        """Get the next unpassed checkpoint closest to the car"""
-        active_checkpoints = [cp for cp in self.checkpoint_group.sprites() 
-                            if not cp.passed and cp.index >= self.current_checkpoint_index]
+        active_checkpoints = [
+            cp for cp in self.checkpoint_group.sprites() 
+            if not cp.passed and cp.index >= self.current_checkpoint_index
+        ]
         if not active_checkpoints:
             return None
             
-        # Sort checkpoints by both index and distance
-        active_checkpoints.sort(key=lambda cp: (
-            cp.index != self.current_checkpoint_index,  # Prioritize current index
-            cp.get_distance_to(self.car.x, self.car.y)  # Then by distance
-        ))
-        
-        return active_checkpoints[0] if active_checkpoints else None
+        return min(active_checkpoints, 
+                  key=lambda cp: (cp.index != self.current_checkpoint_index,
+                                cp.get_distance_to(self.car.x, self.car.y)))
     
     def check_checkpoints(self):
         closest_checkpoint = self.get_closest_active_checkpoint()
-        if not closest_checkpoint:
-            return
-            
-        if self.car.collide(closest_checkpoint.mask, *closest_checkpoint.pos):
+        if closest_checkpoint and self.car.collide(closest_checkpoint.mask, *closest_checkpoint.pos):
             closest_checkpoint.passed = True
             self.current_checkpoint_index = closest_checkpoint.index + 1
             self.checkpoint_sound.play()
@@ -132,29 +111,26 @@ class Environment:
             self.game_state = "running"
 
     def draw(self):
-        # Draw base game elements
+        # Draw base game elements efficiently using blits
         self.surface.blits((
-            (self.cached_grass, (0, 0)),
+            (self.grass, (0, 0)),
             (self.track, (0, 0)),
             (self.finish_line, self.finish_line_position),
         ))
 
-        # Only draw the closest active checkpoint
+        # Draw only the closest active checkpoint for efficiency
         closest_checkpoint = self.get_closest_active_checkpoint()
         if closest_checkpoint:
             self.surface.blit(closest_checkpoint.image, closest_checkpoint.rect)
 
-        # Draw time bonuses - ensure they're drawn before the track border
+        # Draw time bonuses before border for proper layering
         self.time_bonus_group.draw(self.surface)
-        
-        # Draw track border after time bonuses
         self.surface.blit(self.track_border, (0, 0))
         
-        # Draw car
-        blit_rotate_center(self.surface, self.car.image, 
-                        (self.car.x, self.car.y), self.car.angle)
+        # Draw car and UI
+        blit_rotate_center(self.surface, self.car.image, (self.car.x, self.car.y), self.car.angle)
         
-        # Draw UI overlays
+        # Draw appropriate UI based on game state
         if self.game_state == "paused":
             self.draw_pause_overlay()
         elif self.game_state == "running":
@@ -163,40 +139,40 @@ class Environment:
             self.draw_level_complete()
         elif self.game_state == "game_complete":
             self.draw_game_complete()
-            
 
     def draw_pause_overlay(self):
-        # Create semi-transparent overlay
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 128))
         self.surface.blit(overlay, (0, 0))
         
-        # Draw pause text
-        paused_text = font_scale(75).render("GAME PAUSED", True, GREEN)
-        resume_text = font_scale(30).render("Press ESC to Resume", True, WHITE)
-        time_text = font_scale(30).render(
-            f"Time Remaining: {self.remaining_time:.1f}", True, WHITE)
+        # Render all text at once
+        texts = [
+            (font_scale(75).render("GAME PAUSED", True, GREEN), (WIDTH // 2, HEIGHT // 2 - 50)),
+            (font_scale(30).render("Press ESC to Resume", True, WHITE), (WIDTH // 2, HEIGHT // 2 + 20)),
+            (font_scale(30).render(f"Time Remaining: {self.remaining_time:.1f}", True, WHITE), 
+             (WIDTH // 2, HEIGHT // 2 + 70))
+        ]
         
-        paused_rect = paused_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
-        resume_rect = resume_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 20))
-        time_rect = time_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 70))
-        
-        self.surface.blit(paused_text, paused_rect)
-        self.surface.blit(resume_text, resume_rect)
-        self.surface.blit(time_text, time_rect)
+        for text, pos in texts:
+            rect = text.get_rect(center=pos)
+            self.surface.blit(text, rect)
 
-    def draw_ui(self):  
-        #timer      
+    def draw_ui(self):
+        # Render timer with conditional color
         timer_color = RED if self.remaining_time < 1 else GREEN
         timer_text = font_scale(27).render(
-            f"Time Remaining: {self.remaining_time:.1f}", 
-            True, timer_color)
-        self.surface.blit(timer_text, (10, 5))
-
-        #active bonuses
+            f"Time Remaining: {self.remaining_time:.1f}", True, timer_color)
+        
+        # Render bonus counter with conditional color
         bonus_color = YELLOW if self.remaining_time == 1 else GREEN
-        active_bonus = font_scale(36).render(f"Active Bonuses: {len(self.time_bonus_group)}", True, bonus_color)
-        self.surface.blit(active_bonus, (10, 40))
+        bonus_text = font_scale(36).render(
+            f"Active Bonuses: {len(self.time_bonus_group)}", True, bonus_color)
+        
+        # Draw UI elements
+        self.surface.blits((
+            (timer_text, (10, 5)),
+            (bonus_text, (10, 40))
+        ))
 
     def toggle_pause(self):
         if self.game_state == "paused":
@@ -209,65 +185,73 @@ class Environment:
             self.handle_music(False)
 
     def draw_level_complete(self):
-        surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        surface.fill((0, 0, 0, 128))
-        self.surface.blit(surface, (0, 0))
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 128))
+        self.surface.blit(overlay, (0, 0))
         
+        texts = []
         if self.remaining_time > 0:
-            text = font_scale(60).render("Level Complete!", True, GREEN)
-            time_text = font_scale(40).render(
-                f"Time Remaining: {self.remaining_time:.1f}", True, WHITE)
-            next_text = font_scale(30).render("Press SPACE to continue", True, WHITE)
+            texts = [
+                (font_scale(60).render("Level Complete!", True, GREEN), (WIDTH // 2, HEIGHT // 2 - 50)),
+                (font_scale(40).render(f"Time Remaining: {self.remaining_time:.1f}", True, WHITE),
+                 (WIDTH // 2, HEIGHT // 2 + 20)),
+                (font_scale(30).render("Press SPACE to continue", True, WHITE),
+                 (WIDTH // 2, HEIGHT // 2 + 80))
+            ]
         else:
-            text = font_scale(60).render("Time's Up!", True, RED)
-            time_text = font_scale(40).render(
-                "Try to complete the track faster!", True, WHITE)
-            next_text = font_scale(30).render("Press SPACE to retry", True, WHITE)
+            texts = [
+                (font_scale(60).render("Time's Up!", True, RED), (WIDTH // 2, HEIGHT // 2 - 50)),
+                (font_scale(40).render("Try to complete the track faster!", True, WHITE),
+                 (WIDTH // 2, HEIGHT // 2 + 20)),
+                (font_scale(30).render("Press SPACE to retry", True, WHITE),
+                 (WIDTH // 2, HEIGHT // 2 + 80))
+            ]
         
-        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
-        time_rect = time_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 20))
-        next_rect = next_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 80))
-        
-        self.surface.blit(text, text_rect)
-        self.surface.blit(time_text, time_rect)
-        self.surface.blit(next_text, next_rect)
+        for text, pos in texts:
+            rect = text.get_rect(center=pos)
+            self.surface.blit(text, rect)
 
     def draw_game_complete(self):
-        surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        surface.fill((0, 0, 0, 200))
-        self.surface.blit(surface, (0, 0))
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 200))
+        self.surface.blit(overlay, (0, 0))
         
-        text = font_scale(80).render("Congratulations!", True, GOLD)
-        complete_text1 = font_scale(40).render(f"You've completed all levels", True, WHITE)
-        complete_text2= font_scale(40).render(f"You beat this level with {self.remaining_time:.1f} seconds remaining!", True, WHITE)
-        restart_text = font_scale(30).render("Press SPACE to play all levels again", True, WHITE)
+        texts = [
+            (font_scale(80).render("Congratulations!", True, GOLD),
+             (WIDTH // 2, HEIGHT // 2 - 60)),
+            (font_scale(40).render("You've completed all levels", True, WHITE),
+             (WIDTH // 2, HEIGHT // 2 + 20)),
+            (font_scale(40).render(f"You beat this level with {self.remaining_time:.1f} seconds remaining!", True, WHITE),
+             (WIDTH // 2, HEIGHT // 2 + 80)),
+            (font_scale(30).render("Press SPACE to play all levels again", True, WHITE),
+             (WIDTH // 2, HEIGHT // 2 + 140))
+        ]
         
-        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 60))
-        complete1_rect = complete_text1.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 20))
-        complete2_rect = complete_text2.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 80))
-        restart_rect = restart_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 140))
-        
-        self.surface.blit(text, text_rect)
-        self.surface.blit(complete_text1, complete1_rect)
-        self.surface.blit(complete_text2, complete2_rect)
-        self.surface.blit(restart_text, restart_rect)
+        for text, pos in texts:
+            rect = text.get_rect(center=pos)
+            self.surface.blit(text, rect)
 
     def draw_countdown(self, count):
-        Level_Text = font_scale(100).render(self.current_level_data["Level"], True, GOLD)
-        Level_Rect = Level_Text.get_rect(center=(WIDTH // 2, 75))
-        self.surface.blit(Level_Text, Level_Rect)
+        # Draw level title
+        level_text = font_scale(100).render(self.current_level_data["Level"], True, GOLD)
+        level_rect = level_text.get_rect(center=(WIDTH // 2, 75))
+        self.surface.blit(level_text, level_rect)
 
+        # Create shadow effect for countdown number
         shadow = font_scale(175, COUNTDOWN_FONT).render(str(count), True, BLACK)
         shadow_surface = pygame.Surface(shadow.get_size(), pygame.SRCALPHA)
         shadow_surface.blit(shadow, (0, 0))
         shadow_surface.set_alpha(200)
-        shadow_rect = shadow_surface.get_rect(center=(WIDTH // 2 + 5, HEIGHT // 2 + 5))
         
+        # Position and draw shadow and main text
+        shadow_rect = shadow_surface.get_rect(center=(WIDTH // 2 + 5, HEIGHT // 2 + 5))
         text = font_scale(175, COUNTDOWN_FONT).render(str(count), True, RED)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         
-        self.surface.blit(shadow_surface, shadow_rect)
-        self.surface.blit(text, text_rect)
+        self.surface.blits((
+            (shadow_surface, shadow_rect),
+            (text, text_rect)
+        ))
 
     def handle_completion(self):
         if self.remaining_time > 0:
@@ -293,17 +277,17 @@ class Environment:
     def update(self):
         if self.game_state == "countdown":
             self.run_countdown()
-        elif self.game_state == "running":
-            if self.remaining_time > 0:
-                self.remaining_time -= 1/FPS
-                if self.remaining_time <= 0:
-                    if self.auto_respawn:
-                        self.restart_level()
-                        self.remaining_time = self.current_level_data["target_time"]
-                        self.game_state = "countdown"
-                    else:
-                        self.game_state = "level_complete"
-                        self.handle_music(False)
+        elif self.game_state == "running" and self.remaining_time > 0:
+            self.remaining_time -= 1/FPS
+            if self.remaining_time <= 0:
+                if self.auto_respawn:
+                    self.restart_level()
+                    self.remaining_time = self.current_level_data["target_time"]
+                    self.game_state = "countdown"
+                else:
+                    self.game_state = "level_complete"
+                    self.handle_music(False)
+            else:
                 self.check_collision()
                 self.check_checkpoints()
                 self.check_time_bonuses()
@@ -312,13 +296,12 @@ class Environment:
         if self.game_state != "running":
             return False
 
-        moving = False
-        if action == 1 or action in [5, 6]:
+        # Handle movement based on action
+        moving = action in [1, 2, 5, 6, 7, 8]
+        if action in [1, 5, 6]:
             self.car.accelerate(True)
-            moving = True
-        elif action == 2 or action in [7, 8]:
+        elif action in [2, 7, 8]:
             self.car.accelerate(False)
-            moving = True
         
         if action in [3, 5, 7]:
             self.car.rotate(left=True)
@@ -332,29 +315,28 @@ class Environment:
         return self.check_finish()
 
     def check_collision(self):
-        collision = self.car.collide(self.track_border_mask)
-        if collision:
+        if self.car.collide(self.track_border_mask):
             self.car.handle_border_collision()
             self.collide_sound.play()
-        return collision
+            return True
+        return False
 
     def check_finish(self):
         finish_pos = self.car.collide(self.finish_mask, *self.finish_line_position)
-        if finish_pos:
-            if finish_pos[1] == 0:
-                self.car.handle_border_collision()
-            else:
-                # Check if all checkpoints in the checkpoint group have been passed
-                if all(cp.passed for cp in self.checkpoint_group.sprites()):
-                    self.win_sound.play()
-                    self.handle_music(False)
-                    if self.current_level < len(LEVELS) - 1:
-                        self.game_state = "level_complete"
-                    else:
-                        self.game_state = "game_complete"
-                    return True
-                else:
-                    self.car.handle_border_collision()
+        if not finish_pos:
+            return False
+            
+        if finish_pos[1] == 0:
+            self.car.handle_border_collision()
+            return False
+            
+        if all(cp.passed for cp in self.checkpoint_group.sprites()):
+            self.win_sound.play()
+            self.handle_music(False)
+            self.game_state = "game_complete" if self.current_level >= len(LEVELS) - 1 else "level_complete"
+            return True
+            
+        self.car.handle_border_collision()
         return False
     
     def check_time_bonuses(self):
