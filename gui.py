@@ -14,14 +14,16 @@ class GameMenu:
         self.font_small = pygame.font.Font(FONT, 33)
         self.font_title = pygame.font.Font(FONT, 100)  
 
-        
+        self.player1_active = False
+        self.player2_active = False
+
         # Selections
         self.sound_enabled = True
         self.auto_respawn = True
         self.player1_selection = None
         self.player2_selection = None
         self.player1_car_color = "Red"
-        self.player2_car_color = "Red"  # For future use
+        self.player2_car_color = "ice"  
         self.music_enabled = True  # Music toggle state
 
         # Music setup
@@ -35,6 +37,48 @@ class GameMenu:
         self.cap = cv2.VideoCapture(self.video_path)
         self.video_surface = pygame.Surface((WIDTH, HEIGHT))
 
+    def draw_controls_info(self, x, y, is_player_one):
+        """Draw control information for a player"""
+        controls = {
+            'Player 1': {
+                'Forward': 'W',
+                'Backward': 'S',
+                'Left': 'A',
+                'Right': 'D'
+            },
+            'Player 2': {
+                'Forward': 'Up',
+                'Backward': 'Down',
+                'Left': 'Left',
+                'Right': 'Right'
+            }
+        }
+        
+        player = 'Player 1' if is_player_one else 'Player 2'
+        control_set = controls[player]
+        color = BLUE if is_player_one else RED
+        
+        # Draw controls box
+        box_height = 180
+        box_width = 200
+        box_rect = pygame.Rect(x - box_width//2, y, box_width, box_height)
+        s = pygame.Surface((box_width, box_height))
+        s.set_alpha(128)
+        s.fill(color)
+        self.screen.blit(s, box_rect)
+        pygame.draw.rect(self.screen, WHITE, box_rect, 2)
+        
+        # Draw control text
+        title_y = y + 20
+        self.draw_text("Controls", self.font_small, WHITE, x, title_y)
+        
+        spacing = 30
+        start_y = title_y + spacing
+        for i, (action, key) in enumerate(control_set.items()):
+            text = f"{action}: {key}"
+            self.draw_text(text, pygame.font.Font(FONT, 20), WHITE, x, start_y + i * spacing)
+
+    
     def render_video_frame(self):
         ret, frame = self.cap.read()
         if not ret:
@@ -100,8 +144,13 @@ class GameMenu:
             self.draw_text("Time Drift", self.font_title, RED, center_x, 100)
             
             # Player 1 Section
-            self.draw_text("Player 1", self.font_small, WHITE, center_x - 300, player_section_top)
+            self.draw_text("Player 1", self.font_small, BLUE, center_x - 300, player_section_top)
             
+            if self.player1_selection:
+                self.draw_controls_info(center_x - 525, 25, True)
+            if self.player2_selection:
+                self.draw_controls_info(center_x + 525 , 25, False)
+
             # Player 1 Type Selection
             player1_buttons = [
                 self.create_button(
@@ -110,13 +159,13 @@ class GameMenu:
                     button_width, 
                     button_height, 
                     text, 
-                    GREEN if self.player1_selection == text else GRAY
+                    BLUE if self.player1_selection == text else GRAY
                 )
                 for i, text in enumerate(["Human", "DQN", "Min_Max", "Alpha_Beta"])
             ]
             
-            # Player 1 Car Color Selection (horizontally to the left)
-            self.draw_text("Car Color", self.font_small, WHITE, center_x - 500, player_section_top + section_spacing)
+            # Player 1 Car Color Selection 
+            self.draw_text("Car Color", self.font_small, BLUE, center_x - 500, player_section_top + section_spacing)
             p1_color_buttons = [
                 self.create_button(
                     center_x - 500,
@@ -124,15 +173,14 @@ class GameMenu:
                     color_button_width,
                     button_height,
                     color,
-                    GREEN if self.player1_car_color == color else GRAY
+                    BLUE if self.player1_car_color == color else GRAY
                 )
                 for i, color in enumerate(["Red", "Blue", "Green", "Yellow", "ice"])
             ]
             
-            # Player 2 Section (Disabled for now)
-            self.draw_text("Player 2 (Coming Soon)", self.font_small, FOGGRAY, center_x + 300, player_section_top)
-            
-            # Player 2 Type Selection (Disabled)
+            # Player 2 Section 
+            self.draw_text("Player 2", self.font_small, RED, center_x + 300, player_section_top)
+            # Player 2 Type Selection 
             player2_buttons = [
                 self.create_button(
                     center_x + 300, 
@@ -140,14 +188,13 @@ class GameMenu:
                     button_width, 
                     button_height, 
                     text, 
-                    GRAY,
-                    disabled=True
+                    RED if self.player2_selection == text else GRAY
                 )
                 for i, text in enumerate(["Human", "DQN", "Min_Max", "Alpha_Beta"])
             ]
             
-            # Player 2 Car Color Selection (horizontally to the right, disabled)
-            self.draw_text("Car Color", self.font_small, FOGGRAY, center_x + 500, player_section_top + section_spacing)
+            # Player 2 Car Color Selection 
+            self.draw_text("Car Color", self.font_small, RED, center_x + 500, player_section_top + section_spacing)
             p2_color_buttons = [
                 self.create_button(
                     center_x + 500,
@@ -155,8 +202,7 @@ class GameMenu:
                     color_button_width,
                     button_height,
                     color,
-                    GRAY,
-                    disabled=True
+                    RED if self.player2_car_color == color else GRAY
                 )
                 for i, color in enumerate(["Red", "Blue", "Green", "Yellow", "ice"])
             ]
@@ -185,13 +231,27 @@ class GameMenu:
                     # Check Player 1 buttons
                     for i, rect in enumerate(player1_buttons):
                         if rect.collidepoint(mouse_pos):
-                            self.player1_selection = ["Human", "DQN", "Min_Max", "Alpha_Beta"][i]
+                            if self.player1_selection == ["Human", "DQN", "Min_Max", "Alpha_Beta"][i]:
+                                self.player1_selection = None
+                            else:
+                                self.player1_selection = ["Human", "DQN", "Min_Max", "Alpha_Beta"][i]
                     
                     # Check Player 1 Car Color buttons
                     for i, rect in enumerate(p1_color_buttons):
-                        if rect.collidepoint(mouse_pos):
+                        if rect.collidepoint(mouse_pos) and ["Red", "Blue", "Green", "Yellow", "ice"][i] != self.player2_car_color:
                             self.player1_car_color = ["Red", "Blue", "Green", "Yellow", "ice"][i]
-                    
+
+                    for i, rect in enumerate(player2_buttons):
+                        if rect.collidepoint(mouse_pos):
+                            if self.player2_selection == ["Human", "DQN", "Min_Max", "Alpha_Beta"][i]:
+                                self.player2_selection = None
+                            else:
+                                self.player2_selection = ["Human", "DQN", "Min_Max", "Alpha_Beta"][i]
+
+                    for i, rect in enumerate(p2_color_buttons):
+                        if rect.collidepoint(mouse_pos) and ["Red", "Blue", "Green", "Yellow", "ice"][i] != self.player1_car_color:
+                            self.player2_car_color = ["Red", "Blue", "Green", "Yellow", "ice"][i]
+
                     # Music toggle
                     if pygame.Rect(center_x - 215, settings_section_y + 35, 30, 30).collidepoint(mouse_pos):
                         self.music_enabled = not self.music_enabled
@@ -210,17 +270,17 @@ class GameMenu:
                     
                     # Start game
                     if start_button.collidepoint(mouse_pos):
-                        if self.player1_selection:
+                        if self.player1_selection or self.player2_selection:  # Allow starting with at least one player
                             pygame.mixer.music.stop()
                             return {
-                                'player1': self.player1_selection,
-                                'player2': None,  # For future use
+                                'player1': self.player1_selection or None,  # Return None if no selection
+                                'player2': self.player2_selection or None,  # Return None if no selection
                                 'sound_enabled': self.sound_enabled,
                                 'auto_respawn': self.auto_respawn,
-                                'car_color': self.player1_car_color
+                                'car_color1': self.player1_car_color,
+                                'car_color2': self.player2_car_color
                             }
-                        else:
-                            print("Please select options for Player 1.")
             
             pygame.display.flip()
             clock.tick(60)
+

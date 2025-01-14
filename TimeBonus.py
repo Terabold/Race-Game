@@ -28,20 +28,17 @@ class TimeBonus(pygame.sprite.Sprite):
         bonus_group = pygame.sprite.Group()
         
         if track_name not in TRACK_BONUS_POINTS:
-            print(f"No bonus points defined for {track_name}")
             return bonus_group
             
         # Get available positions for this track
         available_positions = list(TRACK_BONUS_POINTS[track_name])
         if not available_positions:
-            print(f"No positions available for {track_name}")
             return bonus_group
             
         random.shuffle(available_positions)
         
         # Take only the requested number of positions
         selected_positions = available_positions[:num_bonuses]
-        print(f"Creating {len(selected_positions)} bonuses for {track_name}")
         
         # Create bonus sprites and add them to the group
         for x, y in selected_positions:
