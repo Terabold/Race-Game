@@ -6,7 +6,7 @@ class TimeBonus(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
         # Create a larger, more visible bonus sprite
-        size = 35  # Increased size
+        size = 15  # Increased size
         self.image = pygame.Surface((size, size), pygame.SRCALPHA)
         
         # Draw a gold square with a black border

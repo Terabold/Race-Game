@@ -22,8 +22,8 @@ class GameMenu:
         self.auto_respawn = True
         self.player1_selection = None
         self.player2_selection = None
-        self.player1_car_color = "Red"
-        self.player2_car_color = "ice"  
+        self.player1_car_color = "Blue"
+        self.player2_car_color = "Red"  
         self.music_enabled = True  # Music toggle state
 
         # Music setup
@@ -38,7 +38,6 @@ class GameMenu:
         self.video_surface = pygame.Surface((WIDTH, HEIGHT))
 
     def draw_controls_info(self, x, y, is_player_one):
-        """Draw control information for a player"""
         controls = {
             'Player 1': {
                 'Forward': 'W',
@@ -59,7 +58,7 @@ class GameMenu:
         color = BLUE if is_player_one else RED
         
         # Draw controls box
-        box_height = 180
+        box_height = 160
         box_width = 200
         box_rect = pygame.Rect(x - box_width//2, y, box_width, box_height)
         s = pygame.Surface((box_width, box_height))
@@ -97,7 +96,6 @@ class GameMenu:
         self.screen.blit(render, text_rect)
 
     def create_radio_button(self, x, y, selected):
-        """Creates a radio button."""
         color = GREEN if selected else FOGGRAY
         pygame.draw.circle(self.screen, color, (x, y), 15)
         pygame.draw.circle(self.screen, WHITE, (x, y), 15, 2)
