@@ -1,8 +1,7 @@
 import pygame
 import sys
 from Environment import Environment
-from Human_Agent import Human_Agent
-from Human_Agent import Human_Agent2
+from Human_Agent import HumanAgentWASD, HumanAgentArrows
 from Constants import *
 from gui import GameMenu
 
@@ -17,7 +16,6 @@ def main():
         pygame.display.set_caption("Racing Game")
         clock = pygame.time.Clock()
         
-        # Initialize environment with selected car colors
         environment = Environment(
             surface, 
             sound_enabled=settings['sound_enabled'],
@@ -26,9 +24,8 @@ def main():
             car_color2=settings['car_color2'] if settings['player2'] else None
         )
         
-        # Initialize players only if they're selected
-        player1 = Human_Agent() if settings['player1'] else None
-        player2 = Human_Agent2() if settings['player2'] == "Human" else None
+        player1 = HumanAgentWASD() if settings['player1'] else None
+        player2 = HumanAgentArrows() if settings['player2'] == "Human" else None
         
         while True:
             clock.tick(FPS)

@@ -3,10 +3,9 @@ import pygame
 from Constants import *
 import numpy as np
 
-class Car(pygame.sprite.Sprite):
-    def __init__(self, x, y, car_color = "red") -> None:  # Modified to take initial position
-        super().__init__()
-        self.x = x  # Store initial position
+class Car():
+    def __init__(self, x, y, car_color = "red") -> None:  
+        self.x = x  
         self.y = y
         self.img = pygame.image.load(CAR_COLORS[car_color]).convert_alpha()
         self.image = pygame.transform.scale(self.img, (19, 38))
@@ -68,14 +67,13 @@ class Car(pygame.sprite.Sprite):
         self.move()
         
     def reset(self, x=None, y=None):
-            """Reset car state with optional new position"""
-            if x is not None and y is not None:
-                self.x = x
-                self.y = y
-            self.velocity = 0
-            self.angle = 0
-            self.drift_momentum = 0
-            self.rect.center = (self.x, self.y)
+        if x is not None and y is not None:
+            self.x = x
+            self.y = y
+        self.velocity = 0
+        self.angle = 0
+        self.drift_momentum = 0
+        self.rect.center = (self.x, self.y)
 
     def handle_border_collision(self):
         # Store original position and movement to calculate the collision response

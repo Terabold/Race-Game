@@ -14,7 +14,6 @@ class Checkpoint(pygame.sprite.Sprite):
         self.pos = pos
         
     def get_distance_to(self, x, y):
-        """Calculate distance from checkpoint to given coordinates"""
         checkpoint_center_x = self.rect.centerx
         checkpoint_center_y = self.rect.centery
         return math.sqrt((checkpoint_center_x - x)**2 + (checkpoint_center_y - y)**2)

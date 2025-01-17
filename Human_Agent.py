@@ -1,69 +1,60 @@
 import pygame
 
-class Human_Agent:
+class BaseHumanAgent:
     def __init__(self):
-        self.action = 0  # Default action (no movement)
+        self.action = 0
+        self.controls = {
+            'forward': None,
+            'backward': None,
+            'left': None,
+            'right': None
+        }
 
     def get_action(self):
         keys = pygame.key.get_pressed()
         
-        forward = keys[pygame.K_w]
-        backward = keys[pygame.K_s]
-        left = keys[pygame.K_a]
-        right = keys[pygame.K_d]
+        forward = keys[self.controls['forward']]
+        backward = keys[self.controls['backward']]
+        left = keys[self.controls['left']]
+        right = keys[self.controls['right']]
         
-        # Update self.action based on key presses
         if forward and left:
-            self.action = 5  # forward-left
+            self.action = 5
         elif forward and right:
-            self.action = 6  # forward-right
+            self.action = 6
         elif backward and left:
-            self.action = 7  # backward-left
+            self.action = 7
         elif backward and right:
-            self.action = 8  # backward-right
+            self.action = 8
         elif forward:
-            self.action = 1  # forward
+            self.action = 1
         elif backward:
-            self.action = 2  # backward
+            self.action = 2
         elif left:
-            self.action = 3  # left
+            self.action = 3
         elif right:
-            self.action = 4  # right
+            self.action = 4
         else:
-            self.action = 0  # no movement
-
+            self.action = 0
+            
         return self.action
 
-class Human_Agent2:
+class HumanAgentWASD(BaseHumanAgent):
     def __init__(self):
-        self.action = 0  # Default action (no movement)
+        super().__init__()
+        self.controls = {
+            'forward': pygame.K_w,
+            'backward': pygame.K_s,
+            'left': pygame.K_a,
+            'right': pygame.K_d
+        }
 
-    def get_action(self):
-        keys = pygame.key.get_pressed()
-        
-        forward = keys[pygame.K_UP]
-        backward = keys[pygame.K_DOWN]
-        left = keys[pygame.K_LEFT]
-        right = keys[pygame.K_RIGHT]
-        
-        # Update action based on key presses
-        if forward and left:
-            self.action = 5  # forward-left
-        elif forward and right:
-            self.action = 6  # forward-right
-        elif backward and left:
-            self.action = 7  # backward-left
-        elif backward and right:
-            self.action = 8  # backward-right
-        elif forward:
-            self.action = 1  # forward
-        elif backward:
-            self.action = 2  # backward
-        elif left:
-            self.action = 3  # left
-        elif right:
-            self.action = 4  # right
-        else:
-            self.action = 0  # no movement
-
-        return self.action
+class HumanAgentArrows(BaseHumanAgent):
+    def __init__(self):
+        super().__init__()
+        self.controls = {
+            'forward': pygame.K_UP,
+            'backward': pygame.K_DOWN,
+            'left': pygame.K_LEFT,
+            'right': pygame.K_RIGHT
+        }

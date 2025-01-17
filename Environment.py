@@ -39,7 +39,7 @@ class Environment:
             self.car1 = None
 
         if self.car2_active:
-            self.car2 = Car(start_pos[0], start_pos[1], car_color2)  # Fixed this line
+            self.car2 = Car(start_pos[0], start_pos[1], car_color2)  
         else:
             self.car2 = None
         
@@ -69,14 +69,13 @@ class Environment:
         if self.car1_active:
             self.car1.reset(start_pos[0], start_pos[1])
             self.car1_finished = False
-            self.car1_time = level_data["target_time"]  # Reset to level's target time
+            self.car1_time = level_data["target_time"]  
             
         if self.car2_active:
             self.car2.reset(start_pos[0], start_pos[1])
             self.car2_finished = False
-            self.car2_time = level_data["target_time"]  # Reset to level's target time
+            self.car2_time = level_data["target_time"]  
             
-        # Reset remaining time to the maximum of both cars' times
         self.remaining_time = max(
             self.car1_time if self.car1_active else 0,
             self.car2_time if self.car2_active else 0
@@ -118,15 +117,17 @@ class Environment:
         checkpoint_group = self.checkpoint_group1 if car_num == 1 else self.checkpoint_group2
         current_checkpoint_index = self.current_checkpoint_index1 if car_num == 1 else self.current_checkpoint_index2
         
-        # Get all unpassed checkpoints
         unpassed_checkpoints = [cp for cp in checkpoint_group.sprites() if not cp.passed]
         
-        # If no unpassed checkpoints remain, return None
         if not unpassed_checkpoints:
             return None
-            
-        # Find the checkpoint with the lowest index that hasn't been passed
-        return min(unpassed_checkpoints, key=lambda cp: cp.index)
+        
+        closest_checkpoint = unpassed_checkpoints[0]
+        for checkpoint in unpassed_checkpoints:
+            if checkpoint.index < closest_checkpoint.index:
+                closest_checkpoint = checkpoint
+                
+        return closest_checkpoint
     
     def check_finish(self):
         if not self.car1_finished and self.car1_active:
@@ -173,7 +174,6 @@ class Environment:
             (self.finish_line, self.finish_line_position),
         ))
 
-        # Draw all uncollected checkpoints for both players
         if self.car1_active:
             for checkpoint in self.checkpoint_group1:
                 if not checkpoint.passed:
@@ -303,18 +303,15 @@ class Environment:
             self.surface.blit(text, rect)
             
     def draw_countdown(self, count):
-        # Draw level title
         level_text = font_scale(100).render(self.current_level_data["Level"], True, GOLD)
         level_rect = level_text.get_rect(center=(WIDTH // 2, 75))
         self.surface.blit(level_text, level_rect)
 
-        # Create shadow effect for countdown number
         shadow = font_scale(175, COUNTDOWN_FONT).render(str(count), True, BLACK)
         shadow_surface = pygame.Surface(shadow.get_size(), pygame.SRCALPHA)
         shadow_surface.blit(shadow, (0, 0))
         shadow_surface.set_alpha(200)
         
-        # Position and draw shadow and main text
         shadow_rect = shadow_surface.get_rect(center=(WIDTH // 2 + 5, HEIGHT // 2 + 5))
         text = font_scale(175, COUNTDOWN_FONT).render(str(count), True, RED)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
@@ -349,7 +346,6 @@ class Environment:
         if self.game_state == "countdown":
             self.run_countdown()
         elif self.game_state == "running":
-            # Update timers for active players who haven't finished
             if self.car1_active and not self.car1_finished:
                 self.car1_time -= 1/FPS
                 if self.car1_time <= 0:
@@ -360,13 +356,11 @@ class Environment:
                 if self.car2_time <= 0:
                     self.car2_time = 0
             
-            # Update remaining time as the max of both car times
             self.remaining_time = max(
                 self.car1_time if self.car1_active else 0,
                 self.car2_time if self.car2_active else 0
             )
             
-            # Check if both players are either finished or out of time
             car1_inactive = not self.car1_active or self.car1_finished or self.car1_time <= 0
             car2_inactive = not self.car2_active or self.car2_finished or self.car2_time <= 0
 
@@ -379,7 +373,6 @@ class Environment:
                 self.check_time_bonuses()
 
     def check_checkpoints(self):
-        # Check checkpoints for car1 if it exists and is active
         if self.car1_active and self.car1:
             closest_checkpoint1 = self.get_closest_active_checkpoint(1)
             if closest_checkpoint1 and self.car1.collide(closest_checkpoint1.mask, closest_checkpoint1.rect.x, closest_checkpoint1.rect.y):
@@ -388,7 +381,6 @@ class Environment:
                 if self.sound_enabled:
                     self.checkpoint_sound.play()
 
-        # Check checkpoints for car2 if it exists and is active
         if self.car2_active and self.car2:
             closest_checkpoint2 = self.get_closest_active_checkpoint(2)
             if closest_checkpoint2 and self.car2.collide(closest_checkpoint2.mask, closest_checkpoint2.rect.x, closest_checkpoint2.rect.y):
@@ -401,11 +393,9 @@ class Environment:
         if self.game_state != "running":
             return False
 
-        # Only allow movement for car 1 if active, not finished, and has remaining time
         if self.car1_active and not self.car1_finished and self.car1_time > 0 and action1 is not None:
             self._handle_car_movement(self.car1, action1)
 
-        # Only allow movement for car 2 if active, not finished, and has remaining time
         if self.car2_active and not self.car2_finished and self.car2_time > 0 and action2 is not None:
             self._handle_car_movement(self.car2, action2)
 
@@ -414,7 +404,6 @@ class Environment:
 
     def check_time_bonuses(self):
         for bonus in self.time_bonus_group.sprites():
-            # Only check for active cars with remaining time
             if (self.car1_active and not self.car1_finished and self.car1_time > 0 and 
                 self.car1.collide(bonus.mask, bonus.rect.x, bonus.rect.y)):
                 self.car1_time += 1.0
@@ -449,7 +438,6 @@ class Environment:
         collision1 = False
         collision2 = False
         
-        # Only check collision for car1 if it exists and is active
         if self.car1_active and self.car1:
             collision1 = self.car1.collide(self.track_border_mask)
             if collision1:
@@ -457,7 +445,6 @@ class Environment:
                 if self.sound_enabled:
                     self.collide_sound.play()
             
-        # Only check collision for car2 if it exists and is active
         if self.car2_active and self.car2:
             collision2 = self.car2.collide(self.track_border_mask)
             if collision2:
@@ -471,35 +458,36 @@ class Environment:
     def check_finish(self):
         any_finished = False
         
-        # Check car1 finish
         if self.car1_active and self.car1 and not self.car1_finished:
             car1_finish = self.car1.collide(self.finish_mask, *self.finish_line_position)
-            if car1_finish and all(cp.passed for cp in self.checkpoint_group1.sprites()):
-                self.car1_finished = True
-                self.car1_finish_time = self.remaining_time
-                # Only count score if finished with time remaining
-                if self.car1_time > 0:
-                    self.car1_score = self.calculate_score(self.remaining_time, 
-                                                        len(self.initial_bonuses) - len(self.time_bonus_group))
-                    if self.sound_enabled:
-                        self.win_sound.play()
-                any_finished = True
+            if car1_finish is not None: 
+                if car1_finish[1] != 0 and all(cp.passed for cp in self.checkpoint_group1.sprites()):
+                    self.car1_finished = True
+                    self.car1_finish_time = self.remaining_time
+                    if self.car1_time > 0:
+                        self.car1_score = self.calculate_score(self.remaining_time, 
+                                                            len(self.initial_bonuses) - len(self.time_bonus_group))
+                        if self.sound_enabled:
+                            self.win_sound.play()
+                    any_finished = True
+                else:
+                    self.car1.handle_border_collision()
 
-        # Check car2 finish
         if self.car2_active and self.car2 and not self.car2_finished:
             car2_finish = self.car2.collide(self.finish_mask, *self.finish_line_position)
-            if car2_finish and all(cp.passed for cp in self.checkpoint_group2.sprites()):
-                self.car2_finished = True
-                self.car2_finish_time = self.remaining_time
-                # Only count score if finished with time remaining
-                if self.car2_time > 0:
-                    self.car2_score = self.calculate_score(self.remaining_time, 
-                                                        len(self.initial_bonuses) - len(self.time_bonus_group))
-                    if self.sound_enabled:
-                        self.win_sound.play()
-                any_finished = True
+            if car2_finish is not None:  
+                if car2_finish[1] != 0 and all(cp.passed for cp in self.checkpoint_group2.sprites()):
+                    self.car2_finished = True
+                    self.car2_finish_time = self.remaining_time
+                    if self.car2_time > 0:
+                        self.car2_score = self.calculate_score(self.remaining_time, 
+                                                            len(self.initial_bonuses) - len(self.time_bonus_group))
+                        if self.sound_enabled:
+                            self.win_sound.play()
+                    any_finished = True
+                else:
+                    self.car2.handle_border_collision()
 
-        # Level complete conditions
         all_finished = (
             (self.car1_active and not self.car2_active and self.car1_finished) or
             (not self.car1_active and self.car2_active and self.car2_finished) or

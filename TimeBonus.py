@@ -1,30 +1,38 @@
 import pygame
-import random
 from Constants import *
-
+import random
+import math
 class TimeBonus(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        # Create a larger, more visible bonus sprite
-        size = 15  # Increased size
-        self.image = pygame.Surface((size, size), pygame.SRCALPHA)
+        # Load and scale the time bonus image
+        self.image = pygame.image.load(TIME_BONUS_IMAGE).convert_alpha()
+        self.image = pygame.transform.scale(self.image, (20, 20))  # Larger size for better visibility
         
-        # Draw a gold square with a black border
-        pygame.draw.rect(self.image, GOLD, (0, 0, size, size))
-        pygame.draw.rect(self.image, BLACK, (0, 0, size, size), 2)
-        
-        # Add a larger "+" symbol in the center
-        font = pygame.font.Font(None, 30)  # Larger font
-        plus_text = font.render("+", True, BLACK)
-        plus_rect = plus_text.get_rect(center=(size/2, size/2))
-        self.image.blit(plus_text, plus_rect)
+        # Add subtle pulsing animation
+        self.original_image = self.image
+        self.pulse_timer = 0
+        self.pulse_speed = 0.1
+        self.pulse_scale = 1.0
         
         # Center the rect on the given position
         self.rect = self.image.get_rect(center=(x, y))
         self.mask = pygame.mask.from_surface(self.image)
+        
+    def update(self):
+        # Create subtle pulsing effect
+        self.pulse_timer += self.pulse_speed
+        self.pulse_scale = 1.0 + 0.1 * abs(math.sin(self.pulse_timer))
+        
+        # Scale the image for pulsing effect
+        scaled_size = (int(32 * self.pulse_scale), int(32 * self.pulse_scale))
+        self.image = pygame.transform.scale(self.original_image, scaled_size)
+        old_center = self.rect.center
+        self.rect = self.image.get_rect()
+        self.rect.center = old_center
+        self.mask = pygame.mask.from_surface(self.image)
 
     def generate_bonuses(self, track_name, num_bonuses=10):
-        """Generate a specified number of randomly placed time bonuses"""
         bonus_group = pygame.sprite.Group()
         
         if track_name not in TRACK_BONUS_POINTS:

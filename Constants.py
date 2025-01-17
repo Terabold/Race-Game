@@ -1006,6 +1006,7 @@ TRACK_BONUS_POINTS = {
     "track5": track5_points
 }
 
+TIME_BONUS_IMAGE = r'photo\time-bonus-icon.svg'
 FONT = r"fonts\Default.otf"
 SPEEDOMETERFONT = r'fonts\speedometer.ttf'
 COUNTDOWN_FONT = r'fonts\CountDownFont.otf'

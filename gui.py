@@ -8,7 +8,6 @@ class GameMenu:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Race Game Menu")
         
-        # Font setup
         self.font_big = pygame.font.Font(FONT, 45)
         self.font_big = pygame.font.Font(FONT, 45)
         self.font_small = pygame.font.Font(FONT, 33)
@@ -17,22 +16,19 @@ class GameMenu:
         self.player1_active = False
         self.player2_active = False
 
-        # Selections
         self.sound_enabled = True
         self.auto_respawn = True
         self.player1_selection = None
         self.player2_selection = None
         self.player1_car_color = "Blue"
         self.player2_car_color = "Red"  
-        self.music_enabled = True  # Music toggle state
+        self.music_enabled = True  
 
-        # Music setup
         pygame.mixer.init()
         self.music_file = LOBBY_MUSIC
         pygame.mixer.music.load(self.music_file)
-        pygame.mixer.music.set_volume(0.02)  # Default volume
-        pygame.mixer.music.play(-1)  # Loop music
-
+        pygame.mixer.music.set_volume(0.02) 
+        pygame.mixer.music.play(-1) 
         self.video_path = LOBBY_VIDEO
         self.cap = cv2.VideoCapture(self.video_path)
         self.video_surface = pygame.Surface((WIDTH, HEIGHT))
@@ -57,7 +53,6 @@ class GameMenu:
         control_set = controls[player]
         color = BLUE if is_player_one else RED
         
-        # Draw controls box
         box_height = 160
         box_width = 200
         box_rect = pygame.Rect(x - box_width//2, y, box_width, box_height)
@@ -67,7 +62,6 @@ class GameMenu:
         self.screen.blit(s, box_rect)
         pygame.draw.rect(self.screen, WHITE, box_rect, 2)
         
-        # Draw control text
         title_y = y + 20
         self.draw_text("Controls", self.font_small, WHITE, x, title_y)
         
@@ -81,7 +75,7 @@ class GameMenu:
     def render_video_frame(self):
         ret, frame = self.cap.read()
         if not ret:
-            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Restart the video
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  
             ret, frame = self.cap.read()
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -103,7 +97,6 @@ class GameMenu:
     def create_button(self, x, y, width, height, text, color, disabled=False):
         rect = pygame.Rect(x - width//2, y - height//2, width, height)
         
-        # Draw button with reduced alpha if disabled
         if disabled:
             s = pygame.Surface((width, height))
             s.set_alpha(128)
@@ -125,10 +118,9 @@ class GameMenu:
         running = True
         
         button_width, button_height = 200, 80
-        color_button_width = 120  # Smaller width for color buttons
+        color_button_width = 120  
         center_x = WIDTH // 2
         
-        # Vertical spacing
         player_section_top = 150
         section_spacing = 90
         settings_section_y = HEIGHT - 300
@@ -137,6 +129,7 @@ class GameMenu:
         while running:
             # Load and scale background
             self.render_video_frame()
+            
             # Title
             self.draw_text("Time Drift", self.font_title, BLACK, center_x + 3, 103)
             self.draw_text("Time Drift", self.font_title, RED, center_x, 100)
@@ -271,8 +264,8 @@ class GameMenu:
                         if self.player1_selection or self.player2_selection:  # Allow starting with at least one player
                             pygame.mixer.music.stop()
                             return {
-                                'player1': self.player1_selection or None,  # Return None if no selection
-                                'player2': self.player2_selection or None,  # Return None if no selection
+                                'player1': self.player1_selection or None, 
+                                'player2': self.player2_selection or None,  
                                 'sound_enabled': self.sound_enabled,
                                 'auto_respawn': self.auto_respawn,
                                 'car_color1': self.player1_car_color,
