@@ -186,12 +186,14 @@ class Environment:
                 
         self.time_bonus_group.draw(self.surface)
         self.surface.blit(self.track_border, (0, 0))
-        
+    
         if self.car1 and self.car1_active:
+            self.car1.draw_rays(self.surface)  # Draw rays before car
             blit_rotate_center(self.surface, self.car1.image, (self.car1.x, self.car1.y), self.car1.angle)
         if self.car2 and self.car2_active:
+            self.car2.draw_rays(self.surface)  # Draw rays before car
             blit_rotate_center(self.surface, self.car2.image, (self.car2.x, self.car2.y), self.car2.angle)
-        
+   
         if self.game_state == "paused":
             self.draw_pause_overlay()
         elif self.game_state == "running":
@@ -393,11 +395,13 @@ class Environment:
         if self.game_state != "running":
             return False
 
-        if self.car1_active and not self.car1_finished and self.car1_time > 0 and action1 is not None:
+        if self.car1_active and not self.car1_finished and self.car1_time > 0:
             self._handle_car_movement(self.car1, action1)
+            self.car1.cast_rays(self.track_border_mask)  # Update raycasts after movement
 
-        if self.car2_active and not self.car2_finished and self.car2_time > 0 and action2 is not None:
+        if self.car2_active and not self.car2_finished and self.car2_time > 0:
             self._handle_car_movement(self.car2, action2)
+            self.car2.cast_rays(self.track_border_mask)  # Update raycasts after movement
 
         self.check_collision()
         return self.check_finish()
@@ -521,7 +525,7 @@ class Environment:
         self.checkpoint_sound.set_volume(0.3 * volume_multiplier)
 
         self.time_bonus_sound = pygame.mixer.Sound(TIME_BONUS_SOUND)  
-        self.time_bonus_sound.set_volume(0.2 * (1 if self.sound_enabled else 0))
+        self.time_bonus_sound.set_volume(0.08 * (1 if self.sound_enabled else 0))
 
         self.is_music_playing = False
 
@@ -534,28 +538,31 @@ class Environment:
             self.is_music_playing = False
 
     def state(self):
-        """Returns both screen tensor and state parameters for AI training"""
-        # Convert the game surface to a 3D array (width, height, color)
-        screen = pygame.surfarray.array3d(self.surface)
-
-        # Rearrange dimensions to (color, height, width) for PyTorch
-        screen = screen.transpose((2, 0, 1))
-
-        # Convert to PyTorch tensor and normalize colors to range 0-1
-        screen_tensor = torch.FloatTensor(screen)  # Convert to tensor
-        screen_tensor = screen_tensor / 255.0      # Normalize colors
+        """Returns state parameters for AI training"""
+        if not self.car1_active:
+            return None
+            
+        # Get the closest checkpoint
+        closest_checkpoint = self.get_closest_active_checkpoint(1)
+        if closest_checkpoint:
+            checkpoint_x = closest_checkpoint.rect.centerx / WIDTH
+            checkpoint_y = closest_checkpoint.rect.centery / HEIGHT
+        else:
+            checkpoint_x = self.finish_line_position[0] / WIDTH
+            checkpoint_y = self.finish_line_position[1] / HEIGHT
         
-        # Get state parameters as before
+        # Normalize ray distances
+        normalized_rays = self.car1.get_raycast_data()
+        
+        # Combine all state information
         state_list = [
-            self.car.x / WIDTH,                    
-            self.car.y / HEIGHT,                   
-            self.car.velocity / self.car.max_velocity,  
-            self.car.angle / 360.0,                
-            self.car.drift_momentum / self.car.max_velocity,
-            self.finish_line_position[0] / WIDTH,  
-            self.finish_line_position[1] / HEIGHT, 
-            self.car.acceleration / ACCELERATION,   
+            *normalized_rays,                    # 7 ray distances
+            self.car1.velocity / self.car1.max_velocity,  # Normalized velocity
+            self.car1.angle / 360.0,            # Normalized angle
+            self.car1.x / WIDTH,                # Normalized x position
+            self.car1.y / HEIGHT,               # Normalized y position
+            checkpoint_x,                        # Target x position
+            checkpoint_y,                        # Target y position
         ]
-        state_params = torch.tensor(state_list, dtype=torch.float32)
         
-        return screen_tensor, state_params
+        return state_list

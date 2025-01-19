@@ -1011,8 +1011,8 @@ FONT = r"fonts\Default.otf"
 SPEEDOMETERFONT = r'fonts\speedometer.ttf'
 COUNTDOWN_FONT = r'fonts\CountDownFont.otf'
 
-MAXSPEED = 5
-ROTATESPEED = 5
+MAXSPEED = 6.5
+ROTATESPEED = 5.0
 ACCELERATION = 0.12
 
 # Assets
