@@ -17,11 +17,11 @@ YELLOW = (255, 255, 0)
 BLUE = (0, 0, 255)
 
 CAR_COLORS = {
-    "Red": r"photo/red-car.png",
+    "Red": r"photo\car-red.png",
     "Blue": r"photo/car-blue.png",
-    "Green": r"photo/green-car.png",
-    "Yellow": r"photo/car.png",
-    "ice": r"photo/ice-car.png",
+    "Green": r"photo/car-green.png",
+    "Yellow": r"photo/car-yellow.png",
+    "ice": r"photo/car-ice.png",
 }
 
 LEVELS = [
@@ -31,7 +31,7 @@ LEVELS = [
     "car_start_pos": (350, 200),
     "finishline_pos": [275, 250] ,
     "finishline_size": (150, 25),
-    "target_time": 19.0,
+    "target_time": 15.0,
     "Level": "Beginner's Path",
     "checkpoints": [
         {"pos": [40, 200], "size": (170, 20)}, 
@@ -49,7 +49,7 @@ LEVELS = [
     "car_start_pos": (400, 240),
     "finishline_pos": [300, 300],
     "finishline_size": (200, 25),
-    "target_time": 20.0,
+    "target_time": 15.0,
     "Level": "Challenger's Trial" ,
     "checkpoints": [
         {"pos": [75, 260], "size": (170, 20)},  
@@ -83,7 +83,7 @@ LEVELS = [
     "car_start_pos": (510, 275),
     "finishline_pos": [460, 325],
     "finishline_size": (120, 25),
-    "target_time": 17.0,
+    "target_time": 15.0,
     "Level": "Elite Driver's Course" ,
     "checkpoints": [
         {"pos": [255, 70], "size": (20, 150)}, 
@@ -1016,12 +1016,11 @@ ROTATESPEED = 5.0
 ACCELERATION = 0.12
 
 # Assets
-CAR_IMG = r"photo/car.png"
 FINISHLINE = r'photo/finish.png'
 GRASS = r'photo\grass2.jpg'
 CHECKPOINT = r'photo\checkpoint.jpg'
 MENU = r'photo\menu.jpg'
-LOBBY_VIDEO = r'video\background_video.mp4'
+LOBBY_VIDEO = r'video\lobby_music2.mp4'
 
 # Sound
 WIN_SOUND = r'sound/victory.wav'

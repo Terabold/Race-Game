@@ -3,7 +3,7 @@ import sys
 from Environment import Environment
 from Human_Agent import HumanAgentWASD, HumanAgentArrows
 from Constants import *
-from gui import GameMenu
+from GUI import GameMenu
 
 def main():
     menu = GameMenu()
