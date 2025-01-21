@@ -47,16 +47,30 @@ class GameMenu:
         
         if is_disabled:
             s = pygame.Surface((width, height))
-            s.set_alpha(128)
-            s.fill(GRAY)
+            s.set_alpha(100)  
+            s.fill((64, 64, 64)) 
             self.screen.blit(s, (rect.x, rect.y))
+            
+            cross_padding = 5  
+            pygame.draw.line(
+                self.screen, RED, 
+                (rect.left + cross_padding, rect.top + cross_padding), 
+                (rect.right - cross_padding, rect.bottom - cross_padding), 
+                3
+            )
+            pygame.draw.line(
+                self.screen, RED, 
+                (rect.right - cross_padding, rect.top + cross_padding), 
+                (rect.left + cross_padding, rect.bottom - cross_padding), 
+                3
+            )
         else:
             if is_selected:
-                pygame.draw.rect(self.screen, GREEN, rect)
+                pygame.draw.rect(self.screen, WHITE, rect)
             else:
                 pygame.draw.rect(self.screen, GRAY, rect)
         
-        pygame.draw.rect(self.screen, WHITE, rect, 2)
+        pygame.draw.rect(self.screen, WHITE, rect, 2)  
         
         car_image = self.car_images[color]
         car_rect = car_image.get_rect(center=rect.center)

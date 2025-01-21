@@ -33,15 +33,8 @@ class Environment:
         
         start_pos = LEVELS[0]["car_start_pos"]
         
-        if self.car1_active:
-            self.car1 = Car(start_pos[0], start_pos[1], car_color1)
-        else:
-            self.car1 = None
-
-        if self.car2_active:
-            self.car2 = Car(start_pos[0], start_pos[1], car_color2)  
-        else:
-            self.car2 = None
+        self.car1 = Car(start_pos[0], start_pos[1], car_color1) if self.car1_active else None
+        self.car2 = Car(start_pos[0], start_pos[1], car_color2) if self.car2_active else None
         
         self.car1_time = LEVELS[0]["target_time"] if self.car1_active else 0
         self.car2_time = LEVELS[0]["target_time"] if self.car2_active else 0
@@ -57,9 +50,6 @@ class Environment:
         
         self.setup_sound()
         self.load_level(self.current_level)
-    
-    def calculate_score(self, remaining_time, collected_bonuses):
-        return int(remaining_time * 100 + collected_bonuses * 50)
     
     def load_level(self, level_index):
         level_data = LEVELS[level_index]
@@ -135,8 +125,6 @@ class Environment:
             if car1_finish and all(cp.passed for cp in self.checkpoint_group1.sprites()):
                 self.car1_finished = True
                 self.car1_finish_time = self.remaining_time
-                self.car1_score = self.calculate_score(self.remaining_time, 
-                                                     len(self.initial_bonuses) - len(self.time_bonus_group))
                 self.win_sound.play()
 
         if self.car2_active and not self.car2_finished:
@@ -144,8 +132,6 @@ class Environment:
             if car2_finish and all(cp.passed for cp in self.checkpoint_group2.sprites()):
                 self.car2_finished = True
                 self.car2_finish_time = self.remaining_time
-                self.car2_score = self.calculate_score(self.remaining_time, 
-                                                     len(self.initial_bonuses) - len(self.time_bonus_group))
                 self.win_sound.play()
 
         if (self.car1_finished and not self.car2_active) or \
@@ -303,9 +289,15 @@ class Environment:
             self.surface.blit(text, rect)
             
     def draw_countdown(self, count):
+
+        shadow_lvltext = font_scale(100).render(self.current_level_data["Level"], True, BLACK)
+        shadow_lvlrect = shadow_lvltext.get_rect(center=(WIDTH // 2 +3, 78))
+        self.surface.blit(shadow_lvltext, shadow_lvlrect)
+
         level_text = font_scale(100).render(self.current_level_data["Level"], True, GOLD)
         level_rect = level_text.get_rect(center=(WIDTH // 2, 75))
         self.surface.blit(level_text, level_rect)
+
 
         shadow = font_scale(175, COUNTDOWN_FONT).render(str(count), True, BLACK)
         shadow_surface = pygame.Surface(shadow.get_size(), pygame.SRCALPHA)
@@ -322,16 +314,19 @@ class Environment:
         ))
 
     def handle_completion(self):
-        if self.remaining_time > 0:
-            if self.current_level < len(LEVELS) - 1:
-                self.game_state = "level_complete"
-                self.current_level += 1
-                self.load_level(self.current_level)
+        if self.game_state == "level_complete":
+            if self.car1_finished or self.car2_finished:
+                if self.current_level < len(LEVELS) - 1:
+                    self.current_level += 1
+                    self.load_level(self.current_level)
+                else:
+                    self.game_state = "game_complete"
+                    self.handle_music(False)
             else:
-                self.game_state = "game_complete"
-                self.handle_music(False)
-        else:
-            self.load_level(self.current_level)
+                if self.auto_respawn:
+                    self.restart_level()
+                else:
+                    self.load_level(self.current_level)
 
     def restart_game(self):
         self.current_level = 0
@@ -347,28 +342,34 @@ class Environment:
             self.run_countdown()
         elif self.game_state == "running":
             if self.car1_active and not self.car1_finished:
-                self.car1_time -= 1/FPS
+                self.car1_time -= 1 / FPS
                 if self.car1_time <= 0:
                     self.car1_time = 0
-            
+
             if self.car2_active and not self.car2_finished:
-                self.car2_time -= 1/FPS
+                self.car2_time -= 1 / FPS
                 if self.car2_time <= 0:
                     self.car2_time = 0
-            
+
             self.remaining_time = max(
                 self.car1_time if self.car1_active else 0,
                 self.car2_time if self.car2_active else 0
             )
-            
-            car1_inactive = not self.car1_active or self.car1_finished or self.car1_time <= 0
-            car2_inactive = not self.car2_active or self.car2_finished or self.car2_time <= 0
 
-            if car1_inactive and car2_inactive:
-                self.game_state = "game_complete" if self.current_level >= len(LEVELS) - 1 else "level_complete"
-                self.handle_music(False)
+            car1_failed = not self.car1_active or self.car1_finished or self.car1_time <= 0
+            car2_failed = not self.car2_active or self.car2_finished or self.car2_time <= 0
+
+            if car1_failed and car2_failed:
+                if self.car1_finished or self.car2_finished:
+                    self.game_state = "game_complete" if self.current_level >= len(LEVELS) - 1 else "level_complete"
+                    self.handle_music(False)
+                else:
+                    if self.auto_respawn:
+                        self.restart_level()
+                    else:
+                        self.game_state = "level_complete"
+                        self.handle_music(False)
             else:
-                self.check_collision()
                 self.check_checkpoints()
                 self.check_time_bonuses()
 
@@ -395,13 +396,12 @@ class Environment:
 
         if self.car1_active and not self.car1_finished and self.car1_time > 0:
             self._handle_car_movement(self.car1, action1)
-            self.car1.cast_rays(self.track_border_mask)  # Update raycasts after movement
+            self.check_collision(self.car1)
 
         if self.car2_active and not self.car2_finished and self.car2_time > 0:
             self._handle_car_movement(self.car2, action2)
-            self.car2.cast_rays(self.track_border_mask)  # Update raycasts after movement
+            self.check_collision(self.car2)
 
-        self.check_collision()
         return self.check_finish()
 
     def check_time_bonuses(self):
@@ -436,25 +436,13 @@ class Environment:
         if not moving:
             car.reduce_speed()
     
-    def check_collision(self):
-        collision1 = False
-        collision2 = False
-        
-        if self.car1_active and self.car1:
-            collision1 = self.car1.collide(self.track_border_mask)
-            if collision1:
-                self.car1.handle_border_collision()
-                if self.sound_enabled:
-                    self.collide_sound.play()
-            
-        if self.car2_active and self.car2:
-            collision2 = self.car2.collide(self.track_border_mask)
-            if collision2:
-                self.car2.handle_border_collision()
-                if self.sound_enabled:
-                    self.collide_sound.play()
-
-        return collision1 or collision2
+    def check_collision(self, car):
+        if car.collide(self.track_border_mask):
+            car.handle_border_collision()
+            if self.sound_enabled:
+                self.collide_sound.play()
+            return True
+        return False
 
 
     def check_finish(self):
@@ -467,8 +455,6 @@ class Environment:
                     self.car1_finished = True
                     self.car1_finish_time = self.remaining_time
                     if self.car1_time > 0:
-                        self.car1_score = self.calculate_score(self.remaining_time, 
-                                                            len(self.initial_bonuses) - len(self.time_bonus_group))
                         if self.sound_enabled:
                             self.win_sound.play()
                     any_finished = True
@@ -482,8 +468,6 @@ class Environment:
                     self.car2_finished = True
                     self.car2_finish_time = self.remaining_time
                     if self.car2_time > 0:
-                        self.car2_score = self.calculate_score(self.remaining_time, 
-                                                            len(self.initial_bonuses) - len(self.time_bonus_group))
                         if self.sound_enabled:
                             self.win_sound.play()
                     any_finished = True

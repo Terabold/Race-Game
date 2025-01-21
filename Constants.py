@@ -15,6 +15,7 @@ BLACK = (0, 0, 0)
 GRAY = (128, 128, 128)
 YELLOW = (255, 255, 0)
 BLUE = (0, 0, 255)
+DARKGRAY = 	(20,20,20)
 
 CAR_COLORS = {
     "Red": r"photo\car-red.png",
@@ -1011,7 +1012,7 @@ FONT = r"fonts\Default.otf"
 SPEEDOMETERFONT = r'fonts\speedometer.ttf'
 COUNTDOWN_FONT = r'fonts\CountDownFont.otf'
 
-MAXSPEED = 6.5
+MAXSPEED = 5.0
 ROTATESPEED = 5.0
 ACCELERATION = 0.12
 
