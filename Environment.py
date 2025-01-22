@@ -172,7 +172,15 @@ class Environment:
                 
         self.time_bonus_group.draw(self.surface)
         self.surface.blit(self.track_border, (0, 0))
-    
+
+        #boost
+        # if self.car1 and self.car1_active:
+        #     self.car1.update_boost()
+        #     self.car1.draw_boost(self.surface)
+        # if self.car2 and self.car2_active:
+        #     self.car2.update_boost()
+        #     self.car2.draw_boost(self.surface)
+            
         if self.car1 and self.car1_active:
             blit_rotate_center(self.surface, self.car1.image, (self.car1.x, self.car1.y), self.car1.angle)
         if self.car2 and self.car2_active:

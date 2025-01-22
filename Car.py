@@ -38,7 +38,7 @@ class Car:
             WHITE,
             BLACK    
         ]
-
+            
     def cast_rays(self, border_mask):
         self.ray_distances = []
         
