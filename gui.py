@@ -48,9 +48,21 @@ class GameMenu:
         if is_disabled:
             s = pygame.Surface((width, height))
             s.set_alpha(100)  
-            s.fill((64, 64, 64)) 
+            s.fill((32, 32, 32))  
             self.screen.blit(s, (rect.x, rect.y))
-            
+        
+        if is_selected:
+            pygame.draw.rect(self.screen, WHITE, rect)
+        else:
+            pygame.draw.rect(self.screen, GRAY, rect)
+        
+        pygame.draw.rect(self.screen, WHITE, rect, 2)  
+        
+        car_image = self.car_images[color]
+        car_rect = car_image.get_rect(center=rect.center)
+        self.screen.blit(car_image, car_rect)
+        
+        if is_disabled:
             cross_padding = 5  
             pygame.draw.line(
                 self.screen, RED, 
@@ -64,19 +76,9 @@ class GameMenu:
                 (rect.left + cross_padding, rect.bottom - cross_padding), 
                 3
             )
-        else:
-            if is_selected:
-                pygame.draw.rect(self.screen, WHITE, rect)
-            else:
-                pygame.draw.rect(self.screen, GRAY, rect)
-        
-        pygame.draw.rect(self.screen, WHITE, rect, 2)  
-        
-        car_image = self.car_images[color]
-        car_rect = car_image.get_rect(center=rect.center)
-        self.screen.blit(car_image, car_rect)
         
         return rect
+
 
     def draw_controls_info(self, x, y, is_player_one):
         controls = {
@@ -108,7 +110,7 @@ class GameMenu:
             s.fill(primary_color)
             self.screen.blit(s, (box_rect.x + i, box_rect.y + i))
         
-        pygame.draw.rect(self.screen, WHITE, box_rect, 2)
+        pygame.draw.rect(self.screen, YELLOW, box_rect, 3)
         
         title_y = y + 25
         self.draw_text("Controls", self.font_small, WHITE, x, title_y)
@@ -129,7 +131,7 @@ class GameMenu:
             s.set_alpha(160)
             s.fill(primary_color)
             self.screen.blit(s, key_rect)
-            pygame.draw.rect(self.screen, WHITE, key_rect, 1)
+            pygame.draw.rect(self.screen, YELLOW, key_rect, 2)
             
             self.draw_text(key, pygame.font.Font(FONT, 20), WHITE, key_x, start_y + i * spacing)
 
@@ -150,7 +152,7 @@ class GameMenu:
         self.screen.blit(render, text_rect)
 
     def create_radio_button(self, x, y, selected):
-        color = GREEN if selected else FOGGRAY
+        color = GOLD if selected else FOGGRAY
         pygame.draw.circle(self.screen, color, (x, y), 15)
         pygame.draw.circle(self.screen, WHITE, (x, y), 15, 2)
 
@@ -196,8 +198,8 @@ class GameMenu:
         while running:
             self.render_video_frame()
             
-            self.draw_text("Time Chasers", self.font_title, BLACK, center_x + 3, 78)
-            self.draw_text("Time Chasers", self.font_title, GOLD, center_x, 75)
+            self.draw_text("Car Racing", self.font_title, BLACK, center_x + 3, 78)
+            self.draw_text("Car Racing", self.font_title, GOLD, center_x, 75)
             
             if self.player1_selection:
                 self.draw_controls_info(controls_p1_x, controls_y, True)
