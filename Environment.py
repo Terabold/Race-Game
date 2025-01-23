@@ -1,14 +1,9 @@
 import pygame
-import numpy as np
-import torch
 from Constants import *
 from Car import Car
-from Checkpoint import Checkpoint
 from TimeBonus import TimeBonus
-import math
-
-def font_scale(size, Font=FONT):
-    return pygame.font.Font(Font, size)
+from drawing import draw_level_complete, draw_game_complete, draw_countdown, draw_pause_overlay, draw_ui
+from Checkpoint import Checkpoint
 
 def blit_rotate_center(game, image, top_left, angle):
     rotated_image = pygame.transform.rotate(image, angle)
@@ -18,9 +13,7 @@ def blit_rotate_center(game, image, top_left, angle):
 class Environment:
     def __init__(self, surface, sound_enabled=True, auto_respawn=False, car_color1=None, car_color2=None):
         self.surface = surface
-        self.grass = pygame.transform.scale(pygame.image.load(GRASS).convert(), (WIDTH, HEIGHT))
-        self.grass_offset = 0  # For horizontal scroll (optional)
-        self.time = 0
+        self.grass = pygame.image.load(GRASS).convert()
         self.current_level = 0
         self.auto_respawn = auto_respawn
         self.sound_enabled = sound_enabled
@@ -47,7 +40,7 @@ class Environment:
         self.checkpoint_group2 = pygame.sprite.Group()
         self.current_checkpoint_index1 = 0 if self.car1_active else None
         self.current_checkpoint_index2 = 0 if self.car2_active else None
-        
+
         self.time_bonus_group = pygame.sprite.Group()
         self.initial_bonuses = []
         
@@ -74,11 +67,6 @@ class Environment:
             self.car2_time if self.car2_active else 0
         )
         
-        self.checkpoint_group1.empty()
-        self.checkpoint_group2.empty()
-        self.current_checkpoint_index1 = 0
-        self.current_checkpoint_index2 = 0
-        
         self.track = pygame.image.load(level_data["track_image"]).convert_alpha()
         self.track_border = pygame.image.load(level_data["border_image"]).convert_alpha()
         self.track_border_mask = pygame.mask.from_surface(self.track_border)
@@ -90,7 +78,7 @@ class Environment:
         self.finish_mask = pygame.mask.from_surface(self.finish_line)
         
         self.game_state = "countdown"
-        
+
         for i, checkpoint_data in enumerate(level_data.get("checkpoints", [])):
             if self.car1_active:
                 checkpoint1 = Checkpoint(checkpoint_data["pos"], checkpoint_data["size"], i)
@@ -108,7 +96,6 @@ class Environment:
 
     def get_closest_active_checkpoint(self, car_num=1):
         checkpoint_group = self.checkpoint_group1 if car_num == 1 else self.checkpoint_group2
-        current_checkpoint_index = self.current_checkpoint_index1 if car_num == 1 else self.current_checkpoint_index2
         
         unpassed_checkpoints = [cp for cp in checkpoint_group.sprites() if not cp.passed]
         
@@ -123,28 +110,46 @@ class Environment:
         return closest_checkpoint
     
     def check_finish(self):
-        if not self.car1_finished and self.car1_active:
+        any_finished = False
+        
+        if self.car1_active and self.car1 and not self.car1_finished:
             car1_finish = self.car1.collide(self.finish_mask, *self.finish_line_position)
-            if car1_finish and all(cp.passed for cp in self.checkpoint_group1.sprites()):
-                self.car1_finished = True
-                self.car1_finish_time = self.remaining_time
-                self.win_sound.play()
+            if car1_finish is not None: 
+                if car1_finish[1] != 0 and all(cp.passed for cp in self.checkpoint_group1.sprites()):  
+                    self.car1_finished = True
+                    self.car1_finish_time = self.remaining_time
+                    if self.car1_time > 0 and self.sound_enabled:
+                        self.win_sound.play()
+                    any_finished = True
+                else:
+                    self.car1.handle_border_collision()
 
-        if self.car2_active and not self.car2_finished:
+        if self.car2_active and self.car2 and not self.car2_finished:
             car2_finish = self.car2.collide(self.finish_mask, *self.finish_line_position)
-            if car2_finish and all(cp.passed for cp in self.checkpoint_group2.sprites()):
-                self.car2_finished = True
-                self.car2_finish_time = self.remaining_time
-                self.win_sound.play()
+            if car2_finish is not None:  
+                if car2_finish[1] != 0 and all(cp.passed for cp in self.checkpoint_group2.sprites()): 
+                    self.car2_finished = True
+                    self.car2_finish_time = self.remaining_time
+                    if self.car2_time > 0 and self.sound_enabled:
+                        self.win_sound.play()
+                    any_finished = True
+                else:
+                    self.car2.handle_border_collision()
 
-        if (self.car1_finished and not self.car2_active) or \
-           (self.car1_finished and self.car2_finished):
+        all_finished = (
+            (self.car1_active and not self.car2_active and self.car1_finished) or
+            (not self.car1_active and self.car2_active and self.car2_finished) or
+            (self.car1_active and self.car2_active and self.car1_finished and self.car2_finished) or
+            self.remaining_time <= 0
+        )
+
+        if all_finished:
             self.handle_music(False)
-            self.game_state = "game_complete" if self.current_level >= len(LEVELS) - 1 else "level_complete"
+            self.game_state = "game_complete" if self.current_level >= len(LEVELS)-1 else "level_complete"
             return True
 
-        return False
-
+        return any_finished
+    
     def run_countdown(self):
         if self.game_state == "countdown":
             self.countdown_sound.play()
@@ -162,7 +167,7 @@ class Environment:
             (self.track, (0, 0)),
             (self.finish_line, self.finish_line_position),
         ))
-
+        
         if self.car1_active:
             for checkpoint in self.checkpoint_group1:
                 if not checkpoint.passed:
@@ -172,7 +177,7 @@ class Environment:
             for checkpoint in self.checkpoint_group2:
                 if not checkpoint.passed:
                     self.surface.blit(checkpoint.image, checkpoint.rect)
-                
+                    
         self.time_bonus_group.draw(self.surface)
         self.surface.blit(self.track_border, (0, 0))
             
@@ -182,50 +187,25 @@ class Environment:
             blit_rotate_center(self.surface, self.car2.image, (self.car2.x, self.car2.y), self.car2.angle)
    
         if self.game_state == "paused":
-            self.draw_pause_overlay()
+            draw_pause_overlay(self)
         elif self.game_state == "running":
-            self.draw_ui()
+            draw_ui(self)
         elif self.game_state == "level_complete":
-            self.draw_level_complete()
+            draw_level_complete(self)
         elif self.game_state == "game_complete":
-            self.draw_game_complete()
-            
-    def draw_pause_overlay(self):
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 128))
-        self.surface.blit(overlay, (0, 0))
-        
-        texts = [
-            (font_scale(75).render("GAME PAUSED", True, GREEN), (WIDTH // 2, HEIGHT // 2 - 50)),
-            (font_scale(30).render("Press ESC to Resume", True, WHITE), (WIDTH // 2, HEIGHT // 2 + 20)),
-            (font_scale(30).render(f"Time Remaining: {self.remaining_time:.1f}", True, WHITE), 
-             (WIDTH // 2, HEIGHT // 2 + 70))
-        ]
-        
-        for text, pos in texts:
-            rect = text.get_rect(center=pos)
-            self.surface.blit(text, rect)
+            draw_game_complete(self)
 
-    def draw_ui(self):
-        y_offset = 5
-        if self.car1_active:
-            timer_color = RED if self.car1_time < 1 and not self.car1_finished else GREEN
-            timer_text = font_scale(27).render(
-                f"P1 Time: {self.car1_time:.1f}" if not self.car1_finished else "P1: Finished!", 
-                True, 
-                timer_color
-            )
-            self.surface.blit(timer_text, (10, y_offset))
-            y_offset += 30
-            
-        if self.car2_active:
-            timer_color = RED if self.car2_time < 1 and not self.car2_finished else GREEN
-            timer_text = font_scale(27).render(
-                f"P2 Time: {self.car2_time:.1f}" if not self.car2_finished else "P2: Finished!", 
-                True, 
-                timer_color
-            )
-            self.surface.blit(timer_text, (10, y_offset))
+    def run_countdown(self):
+        if self.game_state == "countdown":
+            self.countdown_sound.play()
+            for i in range(3, 0, -1):
+                self.draw()
+                draw_countdown(self, i)  
+                pygame.display.update()
+                pygame.time.wait(1000)
+            self.handle_music(True)
+            self.game_state = "running"
+
 
     def toggle_pause(self):
         if self.game_state == "paused":
@@ -237,74 +217,6 @@ class Environment:
             self.game_state = "paused"
             self.handle_music(False)
 
-    def draw_level_complete(self):
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 128))
-        self.surface.blit(overlay, (0, 0))
-        
-        title = font_scale(60).render("Level Complete!", True, GREEN)
-        self.surface.blit(title, title.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 100)))
-        
-        y_offset = HEIGHT // 2 - 20
-        if self.car1_active:
-            if self.car1_finished:
-                time_text = font_scale(40).render(f"Player 1: Finished!", True, DODGERBLUE)
-            else:
-                time_text = font_scale(40).render(f"Player 1: Time Up!", True, RED)
-            self.surface.blit(time_text, time_text.get_rect(center=(WIDTH // 2, y_offset)))
-            y_offset += 40
-            
-        if self.car2_active:
-            if self.car2_finished:
-                time_text = font_scale(40).render(f"Player 2: Finished!", True, DODGERBLUE)
-            else:
-                time_text = font_scale(40).render(f"Player 2: Time Up!", True, RED)
-            self.surface.blit(time_text, time_text.get_rect(center=(WIDTH // 2, y_offset)))
-            y_offset += 40
-        
-        continue_text = font_scale(30).render("Press SPACE to continue", True, WHITE)
-        self.surface.blit(continue_text, continue_text.get_rect(center=(WIDTH // 2, y_offset + 20)))
-
-    def draw_game_complete(self):
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 128))
-        self.surface.blit(overlay, (0, 0))
-        
-        texts = [
-            (font_scale(60).render("Game Complete!", True, GREEN), (WIDTH // 2, HEIGHT // 2 - 100))
-        ]
-        
-        if self.car1_active:
-            status = "Finished!" if self.car1_finished else "Time Up!"
-            texts.append((font_scale(40).render(f"Player 1: {status}", True, DODGERBLUE),
-                (WIDTH // 2, HEIGHT // 2)))
-        
-        if self.car2_active:
-            status = "Finished!" if self.car2_finished else "Time Up!"
-            texts.append((font_scale(40).render(f"Player 2: {status}", True, RED),
-                (WIDTH // 2, HEIGHT // 2 + 50)))
-        
-        texts.append((font_scale(30).render("Press SPACE to play again", True, WHITE),
-            (WIDTH // 2, HEIGHT // 2 + 120)))
-        
-        for text, pos in texts:
-            rect = text.get_rect(center=pos)
-            self.surface.blit(text, rect)
-            
-    def draw_countdown(self, count):
-        shadow = font_scale(175, COUNTDOWN_FONT).render(str(count), True, BLACK)
-        shadow_surface = pygame.Surface(shadow.get_size(), pygame.SRCALPHA)
-        shadow_surface.blit(shadow, (0, 0))
-        shadow_surface.set_alpha(200)
-        
-        shadow_rect = shadow_surface.get_rect(center=(WIDTH // 2 + 5, HEIGHT // 2 + 5))
-        text = font_scale(175, COUNTDOWN_FONT).render(str(count), True, RED)
-        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-        
-        self.surface.blits((
-            (shadow_surface, shadow_rect),
-            (text, text_rect)
-        ))
 
     def handle_completion(self):
         if self.game_state == "level_complete":
@@ -366,8 +278,6 @@ class Environment:
                 self.check_checkpoints()
                 self.check_time_bonuses()
             
-            self.grass_offset = (self.grass_offset + 1) % WIDTH
-
     def check_checkpoints(self):
         if self.car1_active and self.car1:
             closest_checkpoint1 = self.get_closest_active_checkpoint(1)
@@ -438,50 +348,6 @@ class Environment:
                 self.collide_sound.play()
             return True
         return False
-
-
-    def check_finish(self):
-        any_finished = False
-        
-        if self.car1_active and self.car1 and not self.car1_finished:
-            car1_finish = self.car1.collide(self.finish_mask, *self.finish_line_position)
-            if car1_finish is not None: 
-                if car1_finish[1] != 0 and all(cp.passed for cp in self.checkpoint_group1.sprites()):
-                    self.car1_finished = True
-                    self.car1_finish_time = self.remaining_time
-                    if self.car1_time > 0:
-                        if self.sound_enabled:
-                            self.win_sound.play()
-                    any_finished = True
-                else:
-                    self.car1.handle_border_collision()
-
-        if self.car2_active and self.car2 and not self.car2_finished:
-            car2_finish = self.car2.collide(self.finish_mask, *self.finish_line_position)
-            if car2_finish is not None:  
-                if car2_finish[1] != 0 and all(cp.passed for cp in self.checkpoint_group2.sprites()):
-                    self.car2_finished = True
-                    self.car2_finish_time = self.remaining_time
-                    if self.car2_time > 0:
-                        if self.sound_enabled:
-                            self.win_sound.play()
-                    any_finished = True
-                else:
-                    self.car2.handle_border_collision()
-
-        all_finished = (
-            (self.car1_active and not self.car2_active and self.car1_finished) or
-            (not self.car1_active and self.car2_active and self.car2_finished) or
-            (self.car1_active and self.car2_active and self.car1_finished and self.car2_finished) or
-            self.remaining_time <= 0
-        )
-
-        if all_finished:
-            self.handle_music(False)
-            self.game_state = "game_complete" if self.current_level >= len(LEVELS) - 1 else "level_complete"
-            return True
-
-        return any_finished
                 
     def setup_sound(self):
         volume_multiplier = 1 if self.sound_enabled else 0
