@@ -33,7 +33,6 @@ LEVELS = [
     "finishline_pos": [275, 250] ,
     "finishline_size": (150, 25),
     "target_time": 15.0,
-    "Level": "Beginner's Path",
     "checkpoints": [
         {"pos": [40, 200], "size": (170, 20)}, 
         {"pos": [700, 700], "size": (200, 20)},  
@@ -51,7 +50,6 @@ LEVELS = [
     "finishline_pos": [300, 300],
     "finishline_size": (200, 25),
     "target_time": 15.0,
-    "Level": "Challenger's Trial" ,
     "checkpoints": [
         {"pos": [75, 260], "size": (170, 20)},  
         {"pos": [600, 700], "size": (20, 120)},  
@@ -68,7 +66,6 @@ LEVELS = [
     "finishline_pos": [295, 250],
     "finishline_size": (175, 25),
     "target_time": 17.0,
-    "Level": "Adventurer's Circuit" ,
     "checkpoints": [
         {"pos": [70, 230], "size": (170, 20)}, 
         {"pos": [260, 680], "size": (20, 100)},  
@@ -85,7 +82,6 @@ LEVELS = [
     "finishline_pos": [460, 325],
     "finishline_size": (120, 25),
     "target_time": 15.0,
-    "Level": "Elite Driver's Course" ,
     "checkpoints": [
         {"pos": [255, 70], "size": (20, 150)}, 
         {"pos": [540, 690], "size": (20, 150)},  
@@ -102,7 +98,6 @@ LEVELS = [
     "finishline_pos": [500, 220],
     "finishline_size": (135, 25),
     "target_time": 20.0,
-    "Level": "Master's Challenge" ,
     "checkpoints": [
         {"pos": [300, 230], "size": (170, 20)},  
         {"pos": [80, 600], "size": (170, 20)},  
@@ -1012,7 +1007,7 @@ FONT = r"fonts\Default.otf"
 SPEEDOMETERFONT = r'fonts\speedometer.ttf'
 COUNTDOWN_FONT = r'fonts\CountDownFont.otf'
 
-MAXSPEED = 5.0
+MAXSPEED = 6.0
 ROTATESPEED = 5.0
 ACCELERATION = 0.12
 

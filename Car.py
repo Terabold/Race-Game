@@ -18,7 +18,7 @@ class Car:
         self.drift_angle = 0
         self.drift_momentum = 0
         self.drift_factor = 0.1
-        self.drift_friction = 0.925
+        self.drift_friction = 0.87
         self.grip = 0.95
 
         self.recovery_bounce = 1.5
@@ -167,4 +167,3 @@ class Car:
         car_mask = pygame.mask.from_surface(self.image)
         offset = (int(self.x - x), int(self.y - y))
         return mask.overlap(car_mask, offset)
-

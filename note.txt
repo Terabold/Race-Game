@@ -1,1 +1,0 @@
-add lighting effect like shaders 

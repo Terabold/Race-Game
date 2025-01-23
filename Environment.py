@@ -5,6 +5,7 @@ from Constants import *
 from Car import Car
 from Checkpoint import Checkpoint
 from TimeBonus import TimeBonus
+import math
 
 def font_scale(size, Font=FONT):
     return pygame.font.Font(Font, size)
@@ -18,6 +19,8 @@ class Environment:
     def __init__(self, surface, sound_enabled=True, auto_respawn=False, car_color1=None, car_color2=None):
         self.surface = surface
         self.grass = pygame.transform.scale(pygame.image.load(GRASS).convert(), (WIDTH, HEIGHT))
+        self.grass_offset = 0  # For horizontal scroll (optional)
+        self.time = 0
         self.current_level = 0
         self.auto_respawn = auto_respawn
         self.sound_enabled = sound_enabled
@@ -172,14 +175,6 @@ class Environment:
                 
         self.time_bonus_group.draw(self.surface)
         self.surface.blit(self.track_border, (0, 0))
-
-        #boost
-        # if self.car1 and self.car1_active:
-        #     self.car1.update_boost()
-        #     self.car1.draw_boost(self.surface)
-        # if self.car2 and self.car2_active:
-        #     self.car2.update_boost()
-        #     self.car2.draw_boost(self.surface)
             
         if self.car1 and self.car1_active:
             blit_rotate_center(self.surface, self.car1.image, (self.car1.x, self.car1.y), self.car1.angle)
@@ -297,16 +292,6 @@ class Environment:
             self.surface.blit(text, rect)
             
     def draw_countdown(self, count):
-
-        shadow_lvltext = font_scale(100).render(self.current_level_data["Level"], True, BLACK)
-        shadow_lvlrect = shadow_lvltext.get_rect(center=(WIDTH // 2 +3, 78))
-        self.surface.blit(shadow_lvltext, shadow_lvlrect)
-
-        level_text = font_scale(100).render(self.current_level_data["Level"], True, GOLD)
-        level_rect = level_text.get_rect(center=(WIDTH // 2, 75))
-        self.surface.blit(level_text, level_rect)
-
-
         shadow = font_scale(175, COUNTDOWN_FONT).render(str(count), True, BLACK)
         shadow_surface = pygame.Surface(shadow.get_size(), pygame.SRCALPHA)
         shadow_surface.blit(shadow, (0, 0))
@@ -380,6 +365,8 @@ class Environment:
             else:
                 self.check_checkpoints()
                 self.check_time_bonuses()
+            
+            self.grass_offset = (self.grass_offset + 1) % WIDTH
 
     def check_checkpoints(self):
         if self.car1_active and self.car1:
