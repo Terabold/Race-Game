@@ -97,10 +97,18 @@ class Environment:
         if all_done:
             self.handle_music(False)
             self.game_state = "finished"
-            return True
+            
+            if self.auto_respawn:
+                self.restart_game()
+                if self.countdown_enabled:
+                    self.game_state = "countdown"  
+                else:
+                    self.game_state = "running"  
+                return True 
+
+            return True 
 
         return any_finished
-
     def draw(self):
         self.surface.blits((
             (self.grass, (0, 0)),

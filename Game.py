@@ -38,7 +38,7 @@ def main():
                 
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_r:
-                        environment.restart_level()
+                        environment.restart_game()
                     elif event.key == pygame.K_SPACE:
                         if environment.game_state == "finished":
                             environment.restart_game()
