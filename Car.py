@@ -3,7 +3,7 @@ import pygame
 from Constants import *
 import random
 class Car:
-    def __init__(self, x, y, car_color="red"):
+    def __init__(self, x, y, car_color="Red"):
         self.x = x
         self.y = y
         self.img = pygame.image.load(CAR_COLORS[car_color]).convert_alpha()
@@ -101,8 +101,12 @@ class Car:
         drift_vertical = math.cos(drift_radians) * self.drift_momentum
         drift_horizontal = math.sin(drift_radians) * self.drift_momentum
         
-        self.y -= (vertical + drift_vertical)
+        # Update position
         self.x -= (horizontal + drift_horizontal)
+        self.y -= (vertical + drift_vertical)  # Changed to subtract for proper forward movement
+        
+        # Update rect position
+        self.rect.center = (self.x, self.y)  # Crucial for camera tracking
         
         self.drift_momentum *= self.drift_friction
         self.drift_angle *= self.drift_friction

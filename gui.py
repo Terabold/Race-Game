@@ -17,7 +17,8 @@ class GameMenu:
         self.player2_active = False
 
         self.sound_enabled = True
-        self.auto_respawn = True
+        self.auto_respawn = False
+        self.countdown_enabled = True
         self.player1_selection = None
         self.player2_selection = None
         self.player1_car_color = "Blue"
@@ -101,7 +102,7 @@ class GameMenu:
         primary_color = DODGERBLUE if is_player_one else RED
         
         box_height = 250
-        box_width = 250  
+        box_width = 200  
         box_rect = pygame.Rect(x - box_width//2, y, box_width, box_height)
         
         for i in range(3):
@@ -110,20 +111,21 @@ class GameMenu:
             s.fill(primary_color)
             self.screen.blit(s, (box_rect.x + i, box_rect.y + i))
         
-        pygame.draw.rect(self.screen, YELLOW, box_rect, 3)
+        pygame.draw.rect(self.screen, WHITE, box_rect, 3)
         
         title_y = y + 25
         self.draw_text("Controls", self.font_small, WHITE, x, title_y)
         
         spacing = 45  
         start_y = title_y + spacing + 10
-        key_width = 70 
+        key_width = 60  
         key_height = 35  
         
         for i, (action, key) in enumerate(control_set.items()):
-            self.draw_text(action, pygame.font.Font(FONT, 22), WHITE, x - 45, start_y + i * spacing)
+            self.draw_text(action, pygame.font.Font(FONT, 20), WHITE, x - 45, start_y + i * spacing) 
             
-            key_x = x + 55  
+            key_x = x + 45 
+            
             key_y = start_y + i * spacing - key_height//2
             
             key_rect = pygame.Rect(key_x - key_width//2, key_y, key_width, key_height)
@@ -131,7 +133,7 @@ class GameMenu:
             s.set_alpha(160)
             s.fill(primary_color)
             self.screen.blit(s, key_rect)
-            pygame.draw.rect(self.screen, YELLOW, key_rect, 2)
+            pygame.draw.rect(self.screen, WHITE, key_rect, 2)
             
             self.draw_text(key, pygame.font.Font(FONT, 20), WHITE, key_x, start_y + i * spacing)
 
@@ -185,14 +187,13 @@ class GameMenu:
         
         player_section_top = 200
         section_spacing = 90
-        settings_section_y = HEIGHT - 250
         start_button_y = HEIGHT - 100
 
-        p1_x = center_x - 200  
-        p2_x = center_x + 200  
+        p1_x = center_x - 300  
+        p2_x = center_x + 300  
         
-        controls_p1_x = 170
-        controls_p2_x = WIDTH - 170
+        controls_p1_x = 120
+        controls_p2_x = WIDTH - 120
         controls_y = 300
         
         while running:
@@ -260,14 +261,21 @@ class GameMenu:
                 for i, color in enumerate(["Red", "Blue", "Green", "Yellow", "ice"])
             ]
 
-            self.draw_text("Lobby Music", self.font_small, WHITE, center_x - 200, settings_section_y)
-            self.create_radio_button(center_x - 200, settings_section_y + 50, self.music_enabled)
+            settings_spacing = 225  
+            settings_start_x = WIDTH // 2 - (settings_spacing * 1.5) 
+            settings_y = HEIGHT - 250  
 
-            self.draw_text("Game Sound", self.font_small, WHITE, center_x, settings_section_y)
-            self.create_radio_button(center_x, settings_section_y + 50, self.sound_enabled)
+            self.draw_text("Lobby Music", self.font_small, WHITE, settings_start_x, settings_y)
+            self.create_radio_button(settings_start_x, settings_y + 50, self.music_enabled)
 
-            self.draw_text("Auto Respawn", self.font_small, WHITE, center_x + 200, settings_section_y)
-            self.create_radio_button(center_x + 200, settings_section_y + 50, self.auto_respawn)
+            self.draw_text("Game Sound", self.font_small, WHITE, settings_start_x + settings_spacing, settings_y)
+            self.create_radio_button(settings_start_x + settings_spacing, settings_y + 50, self.sound_enabled)
+
+            self.draw_text("Auto Respawn", self.font_small, WHITE, settings_start_x + 2 * settings_spacing, settings_y)
+            self.create_radio_button(settings_start_x + 2 * settings_spacing, settings_y + 50, self.auto_respawn)
+
+            self.draw_text("Countdown", self.font_small, WHITE, settings_start_x + 3 * settings_spacing, settings_y)
+            self.create_radio_button(settings_start_x + 3 * settings_spacing, settings_y + 50, self.countdown_enabled)
 
             start_button = self.create_button(center_x, start_button_y, 500, 100, "Start Race", GREEN)
 
@@ -301,19 +309,22 @@ class GameMenu:
                         if rect.collidepoint(mouse_pos) and ["Red", "Blue", "Green", "Yellow", "ice"][i] != self.player1_car_color:
                             self.player2_car_color = ["Red", "Blue", "Green", "Yellow", "ice"][i]
 
-                    if pygame.Rect(center_x - 215, settings_section_y + 35, 30, 30).collidepoint(mouse_pos):
+                    if pygame.Rect(settings_start_x - 15, settings_y + 35, 30, 30).collidepoint(mouse_pos):
                         self.music_enabled = not self.music_enabled
                         if self.music_enabled:
                             pygame.mixer.music.play(-1)
                         else:
                             pygame.mixer.music.stop()
 
-                    if pygame.Rect(center_x - 15, settings_section_y + 35, 30, 30).collidepoint(mouse_pos):
+                    if pygame.Rect(settings_start_x + settings_spacing - 15, settings_y + 35, 30, 30).collidepoint(mouse_pos):
                         self.sound_enabled = not self.sound_enabled
 
-                    if pygame.Rect(center_x + 185, settings_section_y + 35, 30, 30).collidepoint(mouse_pos):
+                    if pygame.Rect(settings_start_x + 2 * settings_spacing - 15, settings_y + 35, 30, 30).collidepoint(mouse_pos):
                         self.auto_respawn = not self.auto_respawn
-                    
+
+                    if pygame.Rect(settings_start_x + 3 * settings_spacing - 15, settings_y + 35, 30, 30).collidepoint(mouse_pos):
+                        self.countdown_enabled = not self.countdown_enabled
+
                     if start_button.collidepoint(mouse_pos):
                         if self.player1_selection or self.player2_selection:
                             pygame.mixer.music.stop()
@@ -323,7 +334,8 @@ class GameMenu:
                                 'sound_enabled': self.sound_enabled,
                                 'auto_respawn': self.auto_respawn,
                                 'car_color1': self.player1_car_color,
-                                'car_color2': self.player2_car_color
+                                'car_color2': self.player2_car_color,
+                                'countdown': self.countdown_enabled
                             }
             
             pygame.display.flip()

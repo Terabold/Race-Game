@@ -4,55 +4,27 @@ from Constants import *
 def font_scale(size, Font=FONT):
     return pygame.font.Font(Font, size)
 
-def draw_level_complete(environment):
-    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 128))
-    environment.surface.blit(overlay, (0, 0))
-    
-    title = font_scale(60).render("Level Complete!", True, GREEN)
-    environment.surface.blit(title, title.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 100)))
-    
-    y_offset = HEIGHT // 2 - 20
-    if environment.car1_active:
-        if environment.car1_finished:
-            time_text = font_scale(40).render(f"Player 1: Finished!", True, DODGERBLUE)
-        else:
-            time_text = font_scale(40).render(f"Player 1: Time Up!", True, RED)
-        environment.surface.blit(time_text, time_text.get_rect(center=(WIDTH // 2, y_offset)))
-        y_offset += 40
-        
-    if environment.car2_active:
-        if environment.car2_finished:
-            time_text = font_scale(40).render(f"Player 2: Finished!", True, DODGERBLUE)
-        else:
-            time_text = font_scale(40).render(f"Player 2: Time Up!", True, RED)
-        environment.surface.blit(time_text, time_text.get_rect(center=(WIDTH // 2, y_offset)))
-        y_offset += 40
-    
-    continue_text = font_scale(30).render("Press SPACE to continue", True, WHITE)
-    environment.surface.blit(continue_text, continue_text.get_rect(center=(WIDTH // 2, y_offset + 20)))
-
-def draw_game_complete(environment):
+def draw_finished(environment):
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 128))
     environment.surface.blit(overlay, (0, 0))
     
     texts = [
-        (font_scale(60).render("Game Complete!", True, GREEN), (WIDTH // 2, HEIGHT // 2 - 100))
+        (font_scale(60).render("Race Finished!", True, GREEN), (WIDTH//2, HEIGHT//2 - 100))
     ]
     
     if environment.car1_active:
         status = "Finished!" if environment.car1_finished else "Time Up!"
         texts.append((font_scale(40).render(f"Player 1: {status}", True, DODGERBLUE),
-            (WIDTH // 2, HEIGHT // 2)))
+                    (WIDTH//2, HEIGHT//2)))
     
     if environment.car2_active:
         status = "Finished!" if environment.car2_finished else "Time Up!"
         texts.append((font_scale(40).render(f"Player 2: {status}", True, RED),
-            (WIDTH // 2, HEIGHT // 2 + 50)))
+                    (WIDTH//2, HEIGHT//2 + 50)))
     
-    texts.append((font_scale(30).render("Press SPACE to play again", True, WHITE),
-        (WIDTH // 2, HEIGHT // 2 + 120)))
+    texts.append((font_scale(30).render("Press SPACE to restart", True, WHITE),
+                (WIDTH//2, HEIGHT//2 + 120)))
     
     for text, pos in texts:
         rect = text.get_rect(center=pos)

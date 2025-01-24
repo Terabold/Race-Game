@@ -21,7 +21,8 @@ def main():
             sound_enabled=settings['sound_enabled'],
             auto_respawn=settings['auto_respawn'],
             car_color1=settings['car_color1'] if settings['player1'] else None,
-            car_color2=settings['car_color2'] if settings['player2'] else None
+            car_color2=settings['car_color2'] if settings['player2'] else None,
+            countdown_enabled=settings['countdown']
         )
         
         player1 = HumanAgentWASD() if settings['player1'] else None
@@ -39,9 +40,7 @@ def main():
                     if event.key == pygame.K_r:
                         environment.restart_level()
                     elif event.key == pygame.K_SPACE:
-                        if environment.game_state == "level_complete":
-                            environment.handle_completion()
-                        elif environment.game_state == "game_complete":
+                        if environment.game_state == "finished":
                             environment.restart_game()
                     elif event.key == pygame.K_ESCAPE:
                         environment.toggle_pause()
