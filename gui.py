@@ -46,37 +46,37 @@ class GameMenu:
     def create_car_button(self, x, y, width, height, color, is_selected, is_disabled=False):
         rect = pygame.Rect(x - width//2, y - height//2, width, height)
         
-        if is_disabled:
-            s = pygame.Surface((width, height))
-            s.set_alpha(100)  
-            s.fill((32, 32, 32))  
-            self.screen.blit(s, (rect.x, rect.y))
         
         if is_selected:
             pygame.draw.rect(self.screen, WHITE, rect)
         else:
             pygame.draw.rect(self.screen, GRAY, rect)
         
+        if is_disabled:
+            s = pygame.Surface((width, height))
+            s.set_alpha(200)  
+            s.fill(BLACK)  
+            self.screen.blit(s, (rect.x, rect.y))
         pygame.draw.rect(self.screen, WHITE, rect, 2)  
         
         car_image = self.car_images[color]
         car_rect = car_image.get_rect(center=rect.center)
         self.screen.blit(car_image, car_rect)
         
-        if is_disabled:
-            cross_padding = 5  
-            pygame.draw.line(
-                self.screen, RED, 
-                (rect.left + cross_padding, rect.top + cross_padding), 
-                (rect.right - cross_padding, rect.bottom - cross_padding), 
-                3
-            )
-            pygame.draw.line(
-                self.screen, RED, 
-                (rect.right - cross_padding, rect.top + cross_padding), 
-                (rect.left + cross_padding, rect.bottom - cross_padding), 
-                3
-            )
+        # if is_disabled:
+        #     cross_padding = 5  
+        #     pygame.draw.line(
+        #         self.screen, RED, 
+        #         (rect.left + cross_padding, rect.top + cross_padding), 
+        #         (rect.right - cross_padding, rect.bottom - cross_padding), 
+        #         3
+        #     )
+        #     pygame.draw.line(
+        #         self.screen, RED, 
+        #         (rect.right - cross_padding, rect.top + cross_padding), 
+        #         (rect.left + cross_padding, rect.bottom - cross_padding), 
+        #         3
+        #     )
         
         return rect
 
@@ -199,8 +199,8 @@ class GameMenu:
         while running:
             self.render_video_frame()
             
-            self.draw_text("Car Racing", self.font_title, BLACK, center_x + 3, 78)
-            self.draw_text("Car Racing", self.font_title, GOLD, center_x, 75)
+            self.draw_text("Main Menu", self.font_title, BLACK, center_x + 3, 78)
+            self.draw_text("Main Menu", self.font_title, GOLD, center_x, 75)
             
             if self.player1_selection:
                 self.draw_controls_info(controls_p1_x, controls_y, True)
