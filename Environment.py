@@ -120,9 +120,9 @@ class Environment:
         self.surface.blit(self.track_border, (0, 0))
             
         if self.car1 and self.car1_active:
-            blit_rotate_center(self.surface, self.car1.image, (self.car1.x, self.car1.y), self.car1.angle)
+            blit_rotate_center(self.surface, self.car1.image, (self.car1.position.x, self.car1.position.y), self.car1.angle)
         if self.car2 and self.car2_active:
-            blit_rotate_center(self.surface, self.car2.image, (self.car2.x, self.car2.y), self.car2.angle)
+            blit_rotate_center(self.surface, self.car2.image, (self.car2.position.x, self.car2.position.y), self.car2.angle)
    
         if self.game_state == "paused":
             draw_pause_overlay(self)
