@@ -7,8 +7,12 @@ class Obstacle(pygame.sprite.Sprite):
         super().__init__()
         self.image = pygame.image.load(BOMB).convert_alpha() 
         self.image = pygame.transform.scale(self.image, (20, 20))
+        
+        self.mask_surface = pygame.Surface((20, 20), pygame.SRCALPHA)  
+        pygame.draw.rect(self.mask_surface, (255, 255, 255), (9, 9, 2, 2))  
+        self.mask = pygame.mask.from_surface(self.mask_surface) 
+        
         self.rect = self.image.get_rect(center=(x, y))
-        self.mask = pygame.mask.from_surface(self.image)
 
     def generate_obstacles(self, num_obstacles=10):  
         obstacle_group = pygame.sprite.Group()
@@ -19,3 +23,7 @@ class Obstacle(pygame.sprite.Sprite):
             obstacle = Obstacle(x, y)
             obstacle_group.add(obstacle)
         return obstacle_group
+
+    def reshuffle_obstacles(self, obstacle_group, num_obstacles):
+        obstacle_group.empty()  
+        obstacle_group.add(self.generate_obstacles(num_obstacles))

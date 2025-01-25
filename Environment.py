@@ -24,7 +24,7 @@ class Environment:
         self.car2_active = car_color2 is not None
         self.car1_finished = False
         self.car2_finished = False
-        
+        self.num_obstacles = 0
         self.countdown_enabled = countdown_enabled
 
         self.track = pygame.image.load(TRACK).convert_alpha()
@@ -48,9 +48,9 @@ class Environment:
         
         self.obstacle_group = pygame.sprite.Group()
         obstacle_generator = Obstacle(0, 0)
-        num_obstacles = 40 if self.car1_active and self.car2_active else 20
+        self.num_obstacles = 40 if self.car1_active and self.car2_active else 20
         self.obstacle_group.add(
-            obstacle_generator.generate_obstacles(num_obstacles) 
+            obstacle_generator.generate_obstacles(self.num_obstacles) 
         )
         
         self.setup_sound()
@@ -109,6 +109,7 @@ class Environment:
             return True 
 
         return any_finished
+    
     def draw(self):
         self.surface.blits((
             (self.grass, (0, 0)),
@@ -123,6 +124,9 @@ class Environment:
             blit_rotate_center(self.surface, self.car1.image, (self.car1.position.x, self.car1.position.y), self.car1.angle)
         if self.car2 and self.car2_active:
             blit_rotate_center(self.surface, self.car2.image, (self.car2.position.x, self.car2.position.y), self.car2.angle)
+
+        for obstacle in self.obstacle_group:
+            obstacle.draw_hitbox(self.surface)
    
         if self.game_state == "paused":
             draw_pause_overlay(self)
@@ -143,6 +147,9 @@ class Environment:
             self.car2_finished = False
             self.car2_time = TARGET_TIME
         self.remaining_time = max(self.car1_time, self.car2_time)
+
+        obstacle_generator = Obstacle(0, 0)  
+        obstacle_generator.reshuffle_obstacles(self.obstacle_group, self.num_obstacles)
 
         if self.auto_respawn:
             if self.countdown_enabled:
