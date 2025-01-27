@@ -4,11 +4,6 @@ from Car import Car
 from Obstacle import Obstacle
 from drawing import draw_finished, draw_countdown, draw_pause_overlay, draw_ui
 
-def blit_rotate_center(game, image, top_left, angle):
-    rotated_image = pygame.transform.rotate(image, angle)
-    new_rect = rotated_image.get_rect(center=image.get_rect(topleft=top_left).center)
-    game.blit(rotated_image, new_rect.topleft)
-
 class Environment:
     def __init__(self, surface, sound_enabled=True, auto_respawn=False, car_color1=None, car_color2=None, countdown_enabled=False):
         self.surface = surface
@@ -24,7 +19,25 @@ class Environment:
         self.car2_active = car_color2 is not None
         self.car1_finished = False
         self.car2_finished = False
-        self.num_obstacles = 0
+
+        start_x, start_y = CAR_START_POS
+
+        if self.car1_active and self.car2_active:
+            self.car1 = Car(start_x + 20, start_y, car_color1)
+            self.car2 = Car(start_x - 20, start_y, car_color2)
+        else:
+            if self.car1_active:
+                self.car1 = Car(start_x, start_y, car_color1)
+            if self.car2_active:
+                self.car2 = Car(start_x, start_y, car_color2)
+
+        self.all_sprites = pygame.sprite.Group()
+        if self.car1_active:
+            self.all_sprites.add(self.car1)
+        if self.car2_active:
+            self.all_sprites.add(self.car2)  
+
+        self.num_obstacles = 40 if self.car1_active and self.car2_active else 20
         self.countdown_enabled = countdown_enabled
 
         self.track = pygame.image.load(TRACK).convert_alpha()
@@ -38,22 +51,19 @@ class Environment:
         self.finish_line_position = FINISHLINE_POS
         self.finish_mask = pygame.mask.from_surface(self.finish_line)
         
-        start_x, start_y = CAR_START_POS
-        self.car1 = Car(start_x + 20, start_y, car_color1) if self.car1_active else None
-        self.car2 = Car(start_x - 20, start_y, car_color2) if self.car2_active else None
-        
+
         self.car1_time = TARGET_TIME if self.car1_active else 0
         self.car2_time = TARGET_TIME if self.car2_active else 0
         self.remaining_time = max(self.car1_time, self.car2_time)
         
         self.obstacle_group = pygame.sprite.Group()
         obstacle_generator = Obstacle(0, 0)
-        self.num_obstacles = 40 if self.car1_active and self.car2_active else 20
         self.obstacle_group.add(
             obstacle_generator.generate_obstacles(self.num_obstacles) 
         )
         
         self.setup_sound()
+
 
     def run_countdown(self):
         if self.game_state == "countdown":
@@ -70,45 +80,6 @@ class Environment:
                 self.handle_music(True)
                 self.game_state = "running"
 
-    def check_finish(self):
-        any_finished = False
-        
-        if self.car1_active and self.car1 and not self.car1_finished:
-            if finish := self.car1.collide(self.finish_mask, *self.finish_line_position):
-                if finish[1] != 0:  
-                    self.car1_finished = True
-                    if self.sound_enabled:
-                        self.win_sound.play()
-                    any_finished = True
-
-        if self.car2_active and self.car2 and not self.car2_finished:
-            if finish := self.car2.collide(self.finish_mask, *self.finish_line_position):
-                if finish[1] != 0:
-                    self.car2_finished = True
-                    if self.sound_enabled:
-                        self.win_sound.play()
-                    any_finished = True
-
-        all_done = (
-            (self.car1_active == self.car1_finished) and 
-            (self.car2_active == self.car2_finished)
-        ) or self.remaining_time <= 0
-
-        if all_done:
-            self.handle_music(False)
-            self.game_state = "finished"
-            
-            if self.auto_respawn:
-                self.restart_game()
-                if self.countdown_enabled:
-                    self.game_state = "countdown"  
-                else:
-                    self.game_state = "running"  
-                return True 
-
-            return True 
-
-        return any_finished
     
     def draw(self):
         self.surface.blits((
@@ -120,14 +91,8 @@ class Environment:
         self.obstacle_group.draw(self.surface)
         self.surface.blit(self.track_border, (0, 0))
             
-        if self.car1 and self.car1_active:
-            blit_rotate_center(self.surface, self.car1.image, (self.car1.position.x, self.car1.position.y), self.car1.angle)
-        if self.car2 and self.car2_active:
-            blit_rotate_center(self.surface, self.car2.image, (self.car2.position.x, self.car2.position.y), self.car2.angle)
+        self.all_sprites.draw(self.surface)
 
-        for obstacle in self.obstacle_group:
-            obstacle.draw_hitbox(self.surface)
-   
         if self.game_state == "paused":
             draw_pause_overlay(self)
         elif self.game_state == "running":
@@ -192,42 +157,101 @@ class Environment:
     def check_obstacle(self): 
         for obstacle in self.obstacle_group.sprites(): 
             if (self.car1_active and not self.car1_finished and self.car1_time > 0 and 
-                self.car1.collide(obstacle.mask, obstacle.rect.x, obstacle.rect.y)):
+                pygame.sprite.collide_mask(self.car1, obstacle)):
                 self.car1.velocity *= 0.25  
                 if self.sound_enabled:
                     self.obstacle_sound.play()
                 obstacle.kill()
-                
+                    
             elif (self.car2_active and not self.car2_finished and self.car2_time > 0 and 
-                self.car2.collide(obstacle.mask, obstacle.rect.x, obstacle.rect.y)):
+                pygame.sprite.collide_mask(self.car2, obstacle)):
                 self.car2.velocity *= 0.25  
                 if self.sound_enabled:
                     self.obstacle_sound.play()
                 obstacle.kill()
 
+    def check_collision(self, car):
+        offset = (int(car.rect.left), int(car.rect.top))
+        finish_offset = (int(car.rect.left - self.finish_line_position[0]), 
+                        int(car.rect.top - self.finish_line_position[1]))
+        
+        if self.track_border_mask.overlap(car.mask, offset):
+            car.handle_border_collision()
+            if self.sound_enabled:
+                self.collide_sound.play()
+            return True
+        
+        if overlap := self.finish_mask.overlap(car.mask, finish_offset):
+            if overlap[1] <= 2: 
+                car.handle_border_collision()
+                if self.sound_enabled:
+                    self.collide_sound.play()
+                return True
+        return False
+
     def _handle_car_movement(self, car, action):
         moving = action in [1, 2, 5, 6, 7, 8]
+        
+        if action in [3, 5, 7]:
+            car.rotate(left=True)
+            if (car.check_and_handle_rotation_collision(self.track_border_mask) or 
+                car.check_and_handle_rotation_collision(self.finish_mask, self.finish_line_position)):
+                if self.sound_enabled:
+                    self.collide_sound.play()
+
+        elif action in [4, 6, 8]:
+            car.rotate(right=True)
+            if (car.check_and_handle_rotation_collision(self.track_border_mask) or 
+                car.check_and_handle_rotation_collision(self.finish_mask, self.finish_line_position)):
+                if self.sound_enabled:
+                    self.collide_sound.play()
         
         if action in [1, 5, 6]:
             car.accelerate(True)
         elif action in [2, 7, 8]:
             car.accelerate(False)
-            
-        if action in [3, 5, 7]:
-            car.rotate(left=True)
-        elif action in [4, 6, 8]:
-            car.rotate(right=True)
-            
+        
         if not moving:
             car.reduce_speed()
     
-    def check_collision(self, car):
-        if car.collide(self.track_border_mask):
-            car.handle_border_collision()
-            if self.sound_enabled:
-                self.collide_sound.play()
-            return True
-        return False
+    def check_finish(self):
+        any_finished = False
+        
+        if self.car1_active and self.car1 and not self.car1_finished:
+            car1_offset = (int(self.car1.rect.left - self.finish_line_position[0]), 
+                        int(self.car1.rect.top - self.finish_line_position[1]))
+            if finish := self.finish_mask.overlap(self.car1.mask, car1_offset):
+                if finish[1] != 0:  
+                    self.car1_finished = True
+                    if self.sound_enabled:
+                        self.win_sound.play()
+                    any_finished = True
+
+        if self.car2_active and self.car2 and not self.car2_finished:
+            car2_offset = (int(self.car2.rect.left - self.finish_line_position[0]), 
+                        int(self.car2.rect.top - self.finish_line_position[1]))
+            if finish := self.finish_mask.overlap(self.car2.mask, car2_offset):
+                if finish[1] != 0:  
+                    self.car2_finished = True
+                    if self.sound_enabled:
+                        self.win_sound.play()
+                    any_finished = True
+
+        # Check if either car has finished or time has run out
+        if any_finished or self.remaining_time <= 0:
+            self.handle_music(False)
+            self.game_state = "finished"
+            
+            if self.auto_respawn:
+                self.restart_game()
+                if self.countdown_enabled:
+                    self.game_state = "countdown"  
+                else:
+                    self.game_state = "running"  
+                return True 
+            return True 
+
+        return any_finished
                 
     def setup_sound(self):
         volume_multiplier = 1 if self.sound_enabled else 0
@@ -245,7 +269,7 @@ class Environment:
         self.win_sound.set_volume(0.2 * volume_multiplier)
 
         self.obstacle_sound = pygame.mixer.Sound(OBSTACLE_SOUND)  
-        self.obstacle_sound.set_volume(0.08 * (1 if self.sound_enabled else 0))
+        self.obstacle_sound.set_volume(0.08 * volume_multiplier)
 
         self.is_music_playing = False
 

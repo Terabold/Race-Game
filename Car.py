@@ -3,32 +3,33 @@ import pygame
 from pygame.math import Vector2
 from Constants import *
 
-class Car:
+class Car(pygame.sprite.Sprite): 
     def __init__(self, x, y, car_color="Red"):
+        super().__init__() 
         self.position = Vector2(x, y)
+        self.previous_position = Vector2(x, y)
+        self.previous_angle = 0  # Store previous angle
         self.car_color = car_color
         self.img = pygame.image.load(CAR_COLORS[car_color]).convert_alpha()
-        self.image = pygame.transform.scale(self.img, (19, 38))
+        self.image = pygame.transform.scale(self.img, (19, 38))  
+        self.original_image = self.image  
         self.rect = self.image.get_rect(center=self.position)
+        self.mask = pygame.mask.from_surface(self.image)  
         
-        # Movement parameters
         self.max_velocity = MAXSPEED
         self.velocity = 0
         self.rotation_velocity = ROTATESPEED
-        self.angle = 0  # Stored in degrees
+        self.angle = 0  
         self.acceleration = ACCELERATION
 
-        # Drift parameters
         self.drift_angle = 0
         self.drift_momentum = 0
         self.drift_factor = 0.1
         self.drift_friction = 0.87
         self.grip = 0.95
-
-        # Collision recovery
         self.recovery_slowdown = 0.6
+        self.collision_recovery_factor = 0.8 
 
-        # Raycasting
         self.ray_length = 400
         self.ray_count = 7
         self.ray_angles = [90, 60, 30, 0, -30, -60, -90]
@@ -69,6 +70,8 @@ class Car:
         return [dist / self.ray_length for dist in self.ray_distances]
 
     def rotate(self, left=False, right=False):
+        self.previous_angle = self.angle 
+        
         if left:
             self.angle += self.rotation_velocity
             if abs(self.velocity) > self.max_velocity * 0.5:
@@ -78,8 +81,13 @@ class Car:
             if abs(self.velocity) > self.max_velocity * 0.5:
                 self.drift_momentum += self.velocity * self.drift_factor
 
+        self.image = pygame.transform.rotate(self.original_image, self.angle)
+        self.rect = self.image.get_rect(center=self.rect.center)
+        self.mask = pygame.mask.from_surface(self.image)
+
     def move(self):
         self.previous_position = Vector2(self.position)
+        self.previous_angle = self.angle  
 
         radians = math.radians(self.angle + self.drift_angle)
         direction = Vector2(math.sin(radians), math.cos(radians))
@@ -94,15 +102,42 @@ class Car:
 
     def handle_border_collision(self):
         self.position = Vector2(self.previous_position)
-        self.rect.center = self.position
+        self.angle = self.previous_angle
+        
+        self.image = pygame.transform.rotate(self.original_image, self.angle)
+        self.rect = self.image.get_rect(center=self.position)
+        self.mask = pygame.mask.from_surface(self.image)
 
-        self.velocity *= -self.recovery_slowdown
-        self.drift_momentum *= -self.recovery_slowdown
+        self.velocity *= -self.recovery_slowdown * self.collision_recovery_factor
+        self.drift_momentum *= -self.recovery_slowdown * self.collision_recovery_factor
+        self.drift_angle *= self.collision_recovery_factor
 
-    def collide(self, mask, x=0, y=0):
-        car_mask = pygame.mask.from_surface(self.image)
-        offset = (int(self.position.x - x), int(self.position.y - y))
-        return mask.overlap(car_mask, offset)
+    def check_and_handle_rotation_collision(self, mask, offset_pos=(0, 0)):
+        rotated_mask = pygame.mask.from_surface(self.image)
+        
+        if offset_pos == (0, 0):
+            offset = (int(self.rect.left), int(self.rect.top))
+        else: 
+            offset = (int(self.rect.left - offset_pos[0]), 
+                    int(self.rect.top - offset_pos[1]))
+        
+        if mask.overlap(rotated_mask, offset):
+            if offset_pos != (0, 0): 
+                overlap_area = mask.overlap_area(rotated_mask, offset)
+                if overlap_area <= 5:  
+                    self._restore_previous_rotation()
+                    return True
+                return False
+            else: 
+                self._restore_previous_rotation()
+                return True
+        return False
+    
+    def _restore_previous_rotation(self):
+        self.angle = self.previous_angle
+        self.image = pygame.transform.rotate(self.original_image, self.angle)
+        self.rect = self.image.get_rect(center=self.position)
+        self.mask = pygame.mask.from_surface(self.image)
 
     def accelerate(self, forward=True):
         if forward:
@@ -128,3 +163,7 @@ class Car:
         self.drift_momentum = 0
         self.drift_angle = 0
         self.rect.center = self.position
+        self.image = pygame.transform.rotate(self.original_image, self.angle)
+        self.rect = self.image.get_rect(center=self.position)
+        self.mask = pygame.mask.from_surface(self.image)
+

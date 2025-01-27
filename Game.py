@@ -3,7 +3,7 @@ import sys
 from Environment import Environment
 from Human_Agent import HumanAgentWASD, HumanAgentArrows
 from Constants import *
-from GUI import GameMenu
+from gui import GameMenu
 
 def main():
     menu = GameMenu()
@@ -42,8 +42,6 @@ def main():
                     elif event.key == pygame.K_SPACE:
                         if environment.game_state == "finished":
                             environment.restart_game()
-                    elif event.key == pygame.K_ESCAPE:
-                        environment.toggle_pause()
             
             environment.update()
             if environment.game_state == "running":

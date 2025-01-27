@@ -62,22 +62,6 @@ class GameMenu:
         car_image = self.car_images[color]
         car_rect = car_image.get_rect(center=rect.center)
         self.screen.blit(car_image, car_rect)
-        
-        # if is_disabled:
-        #     cross_padding = 5  
-        #     pygame.draw.line(
-        #         self.screen, RED, 
-        #         (rect.left + cross_padding, rect.top + cross_padding), 
-        #         (rect.right - cross_padding, rect.bottom - cross_padding), 
-        #         3
-        #     )
-        #     pygame.draw.line(
-        #         self.screen, RED, 
-        #         (rect.right - cross_padding, rect.top + cross_padding), 
-        #         (rect.left + cross_padding, rect.bottom - cross_padding), 
-        #         3
-        #     )
-        
         return rect
 
 

@@ -18,19 +18,19 @@ BLUE = (0, 0, 255)
 DARKGRAY = 	(20,20,20)
 
 CAR_COLORS = {
-    "Red": r"photo\car-red.png",
-    "Blue": r"photo/car-blue.png",
-    "Green": r"photo/car-green.png",
-    "Yellow": r"photo/car-yellow.png",
-    "ice": r"photo/car-ice.png",
+    "Red": r"data\photo\car-red.png",
+    "Blue": r"data\photo/car-blue.png",
+    "Green": r"data\photo/car-green.png",
+    "Yellow": r"data\photo/car-yellow.png",
+    "ice": r"data\photo/car-ice.png",
 }
 
-CAR_START_POS = (350, 200)
-FINISHLINE_POS = [275, 250] 
-FINISHLINE_SIZE = (150, 25)
+CAR_START_POS = (350, 225)
+FINISHLINE_POS = [250, 250] 
+FINISHLINE_SIZE = (180, 25)
 TARGET_TIME = 35.0
-TRACK_BORDER = r"photo\track1-border.png"
-TRACK = r"photo\track1.png"
+TRACK_BORDER = r"data\photo\track1-border.png"
+TRACK = r"data\photo\trackv2.png"
 TRACK_BONUS_POINTS = [
     (296, 119),
     (359, 120),
@@ -230,27 +230,26 @@ TRACK_BONUS_POINTS = [
     (386, 341),
 ]
 
-BOMB = r'photo\bomb.png'
+BOMB = r'data\photo\bomb.png'
 
-FONT = r"fonts\Default.otf"
-SPEEDOMETERFONT = r'fonts\speedometer.ttf'
-COUNTDOWN_FONT = r'fonts\CountDownFont.otf'
+FONT = r"data\fonts\Default.otf"
+COUNTDOWN_FONT = r'data\fonts\CountDownFont.otf'
 
 MAXSPEED = 6.0
 ROTATESPEED = 5.0
 ACCELERATION = 0.12
 
 # Assets
-FINISHLINE = r'photo/finish.png'
-GRASS = r'photo\grass2.jpg'
-CHECKPOINT = r'photo\checkpoint.jpg'
-LOBBY_VIDEO = r'video\lobby_music2.mp4'
+FINISHLINE = r'data\photo/finish.png'
+GRASS = r'data\photo\grass2.jpg'
+CHECKPOINT = r'data\photo\checkpoint.jpg'
+LOBBY_VIDEO = r'data\video\lobby_music2.mp4'
 
 # Sound
-WIN_SOUND = r'sound/victory.wav'
-COUNTDOWN_SOUND = r'sound/countdown.mp3'
-BACKGROUND_MUSIC = r'sound/background_music.mp3'
-COLLIDE_SOUND = r'sound/collide.mp3'
-CHECKPOINT_SOUND = r'sound\CHECKPOINT_SOUND.mp3'
-LOBBY_MUSIC = r'sound\lobby_music2.mp3'
-OBSTACLE_SOUND = r'sound\obstacle_sound.mp3'
+WIN_SOUND = r'data\sound/victory.wav'
+COUNTDOWN_SOUND = r'data\sound/countdown.mp3'
+BACKGROUND_MUSIC = r'data\sound/background_music.mp3'
+COLLIDE_SOUND = r'data\sound/collide.mp3'
+CHECKPOINT_SOUND = r'data\sound\CHECKPOINT_SOUND.mp3'
+LOBBY_MUSIC = r'data\sound\lobby_music2.mp3'
+OBSTACLE_SOUND = r'data\sound\obstacle_sound.mp3'
