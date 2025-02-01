@@ -2,7 +2,7 @@ import math
 import pygame
 from pygame.math import Vector2
 from Constants import *
-
+# car
 class Car(pygame.sprite.Sprite): 
     def __init__(self, x, y, car_color="Red"):
         super().__init__() 
