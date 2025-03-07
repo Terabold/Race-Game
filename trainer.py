@@ -3,32 +3,32 @@ import sys
 from Environment import Environment
 from Human_Agent import HumanAgentWASD, HumanAgentArrows
 from Constants import *
-from gui import GameMenu
-
-def start_training(settings=None):
-    if not settings:
-        menu = GameMenu()
-        settings = menu.run()
-        
-        if not settings:
-            sys.exit()
+from Options import GameMenu
+import os
+def start_training():
+    settings = {
+        'player1': 'DQN', 
+        'player2': None,   
+        'car_color1': 'Red',
+        'car_color2': None
+    }
     
     pygame.init()
     pygame.mixer.init()
-    
+    os.environ['SDL_VIDEO_CENTERED'] = '1'
     surface = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Racing Game")
+    pygame.display.set_caption("Racing Game - AI Training")
     clock = pygame.time.Clock()
     
     environment = Environment(
         surface, 
-        ai_train_mode=settings['ai_train_mode'],
-        car_color1=settings['car_color1'] if settings['player1'] else None,
-        car_color2=settings['car_color2'] if settings['player2'] else None
+        ai_train_mode=True,
+        car_color1=settings['car_color1'],
+        car_color2=settings['car_color2']
     )
     
-    player1 = HumanAgentWASD() if settings['player1'] == "Human" else None
-    player2 = HumanAgentArrows() if settings['player2'] == "Human" else None
+    player1 = None 
+    player2 = None
     
     game_loop(environment, player1, player2, clock)
     

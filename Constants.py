@@ -1,6 +1,6 @@
 FPS = 60
 WIDTH, HEIGHT = 1600, 900
-
+MENUWIDTH, MENUHEIGHT = 1280, 720
 # Colors
 GOLD = (255, 215, 0)
 GREEN = (0, 255, 0)
@@ -28,7 +28,7 @@ CAR_COLORS = {
 CAR_START_POS = (350, 225)
 FINISHLINE_POS = [250, 250] 
 FINISHLINE_SIZE = (180, 25)
-TARGET_TIME = 5.0
+TARGET_TIME = 35.0
 TRACK_BORDER = r"data\photo\track1-border.png"
 TRACK = r"data\photo\trackv2.png"
 TRACK_BONUS_POINTS = [
@@ -234,6 +234,7 @@ BOMB = r'data\photo\bomb.png'
 
 FONT = r"data\fonts\Default.otf"
 COUNTDOWN_FONT = r'data\fonts\CountDownFont.otf'
+MENUFONT = r'data\fonts\Menu.ttf'
 
 MAXSPEED = 6.0
 ROTATESPEED = 5.0
@@ -243,7 +244,8 @@ ACCELERATION = 0.12
 FINISHLINE = r'data\photo/finish.png'
 GRASS = r'data\photo\grass2.jpg'
 CHECKPOINT = r'data\photo\checkpoint.jpg'
-LOBBY_VIDEO = r'data\video\lobby_music2.mp4'
+MENU = r'data\photo\Background.png'
+RECT = r'data\photo\Rect.png'
 
 # Sound
 WIN_SOUND = r'data\sound/victory.wav'
@@ -251,5 +253,4 @@ COUNTDOWN_SOUND = r'data\sound/countdown.mp3'
 BACKGROUND_MUSIC = r'data\sound/background_music.mp3'
 COLLIDE_SOUND = r'data\sound/collide.mp3'
 CHECKPOINT_SOUND = r'data\sound\CHECKPOINT_SOUND.mp3'
-LOBBY_MUSIC = r'data\sound\lobby_music2.mp3'
 OBSTACLE_SOUND = r'data\sound\obstacle_sound.mp3'

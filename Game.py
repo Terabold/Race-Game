@@ -3,26 +3,19 @@ import sys
 from Environment import Environment
 from Human_Agent import HumanAgentWASD, HumanAgentArrows
 from Constants import *
-from gui import GameMenu
+import os
 
-def start_game(settings=None):
-    if not settings:
-        menu = GameMenu()
-        settings = menu.run()
-        
-        if not settings:
-            sys.exit()
-    
+def start_game(settings):
+   
     pygame.init()
     pygame.mixer.init()
-    
+    os.environ['SDL_VIDEO_CENTERED'] = '1'
     surface = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Racing Game")
     clock = pygame.time.Clock()
     
     environment = Environment(
         surface, 
-        ai_train_mode=settings['ai_train_mode'],
         car_color1=settings['car_color1'] if settings['player1'] else None,
         car_color2=settings['car_color2'] if settings['player2'] else None
     )
