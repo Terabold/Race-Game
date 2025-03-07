@@ -5,7 +5,7 @@ from Human_Agent import HumanAgentWASD, HumanAgentArrows
 from Constants import *
 from gui import GameMenu
 
-def start_game(settings=None):
+def start_training(settings=None):
     if not settings:
         menu = GameMenu()
         settings = menu.run()
@@ -64,4 +64,4 @@ def game_loop(environment, player1, player2, clock):
         pygame.display.update()
 
 if __name__ == "__main__":
-    start_game()
+    start_training()
