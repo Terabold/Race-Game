@@ -10,9 +10,9 @@ class GameMenu:
         
         self.background = pygame.image.load(MENU)
         
-        self.font_big = pygame.font.Font(FONT, 45)
-        self.font_small = pygame.font.Font(FONT, 33)
-        self.font_title = pygame.font.Font(FONT, 100)  
+        self.font_big = pygame.font.Font(MENUFONT, 25)
+        self.font_small = pygame.font.Font(MENUFONT, 20)
+        self.font_title = pygame.font.Font(MENUFONT, 60)  
 
         self.player1_active = False
         self.player2_active = False
@@ -93,7 +93,7 @@ class GameMenu:
         key_height = 35  
         
         for i, (action, key) in enumerate(control_set.items()):
-            self.draw_text(action, pygame.font.Font(FONT, 20), WHITE, x - 45, start_y + i * spacing) 
+            self.draw_text(action, pygame.font.Font(MENUFONT, 12), WHITE, x - 45, start_y + i * spacing) 
             
             key_x = x + 45 
             
@@ -106,7 +106,7 @@ class GameMenu:
             self.screen.blit(s, key_rect)
             pygame.draw.rect(self.screen, WHITE, key_rect, 2)
             
-            self.draw_text(key, pygame.font.Font(FONT, 20), WHITE, key_x, start_y + i * spacing)
+            self.draw_text(key, pygame.font.Font(MENUFONT, 12), WHITE, key_x, start_y + i * spacing)
 
     def draw_text(self, text, font, color, x, y):
         render = font.render(text, True, color)
@@ -134,7 +134,7 @@ class GameMenu:
         pygame.draw.rect(self.screen, WHITE, rect, 2)
         
         text_color = FOGGRAY if disabled else WHITE
-        text_surface = self.font_small.render(text, True, text_color)
+        text_surface = self.font_big.render(text, True, text_color)
         text_rect = text_surface.get_rect(center=rect.center)
         self.screen.blit(text_surface, text_rect)
         return rect
@@ -168,7 +168,7 @@ class GameMenu:
             self.screen.blit(self.background, (0,0))
             
             self.draw_text("Race Settings", self.font_title, BLACK, center_x + 3, 78)
-            self.draw_text("Race Settings", self.font_title, GOLD, center_x, 75)
+            self.draw_text("Race Settings", self.font_title, "#b68f40", center_x, 75)
             
             if self.player1_selection:
                 self.draw_controls_info(controls_p1_x, controls_y, True)
@@ -188,7 +188,7 @@ class GameMenu:
                 for i, text in enumerate(["Human", "DQN"])   
             ]
             
-            self.draw_text("Select Car", self.font_small, DODGERBLUE, p1_car_x, player_section_top)
+            self.draw_text("Car", self.font_small, DODGERBLUE, p1_car_x, player_section_top)
             p1_color_buttons = [
                 self.create_car_button(
                     p1_car_x,
@@ -215,7 +215,7 @@ class GameMenu:
                 for i, text in enumerate(["Human", "DQN"]) 
             ]
             
-            self.draw_text("Select Car", self.font_small, RED, p2_car_x, player_section_top)
+            self.draw_text("Car", self.font_small, RED, p2_car_x, player_section_top)
             p2_color_buttons = [
                 self.create_car_button(
                     p2_car_x,
