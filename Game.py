@@ -6,7 +6,6 @@ from Constants import *
 import os
 
 def start_game(settings):
-   
     pygame.init()
     pygame.mixer.init()
     os.environ['SDL_VIDEO_CENTERED'] = '1'

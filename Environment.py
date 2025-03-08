@@ -96,10 +96,9 @@ class Environment:
 
         self.obstacle_group.draw(self.surface)
         
-        # Draw rays before the car for better visualization (rays appear behind the car)
-        if self.car1_active:
+        if self.car1_active and self.ai_train_mode:
             self.car1.draw_rays(self.surface)
-        if self.car2_active:
+        if self.car2_active and self.ai_train_mode:
             self.car2.draw_rays(self.surface)
         
         self.surface.blit(self.track_border, (0, 0))
@@ -176,15 +175,15 @@ class Environment:
                 self.car1_time = max(0, self.car1_time - 1/FPS)
                 if self.car1_time <= 0:
                     self.car1.can_move = False
-                # Update raycasts each frame
-                self.car1.cast_rays(self.track_border_mask, self.obstacle_group)
+                if self.ai_train_mode:
+                    self.car1.cast_rays(self.track_border_mask, self.obstacle_group)
             
             if self.car2_active and not self.car2_finished and not self.car2.failed:
                 self.car2_time = max(0, self.car2_time - 1/FPS)
                 if self.car2_time <= 0:
                     self.car2.can_move = False
-                # Update raycasts each frame
-                self.car2.cast_rays(self.track_border_mask, self.obstacle_group)
+                if self.ai_train_mode:
+                    self.car2.cast_rays(self.track_border_mask, self.obstacle_group)
                     
             self.remaining_time = max(self.car1_time, self.car2_time)
             
@@ -200,14 +199,14 @@ class Environment:
         if self.car1_active and not self.car1_finished and not self.car1.failed and self.car1_time > 0:
             self._handle_car_movement(self.car1, action1)
             self.check_collision(self.car1)
-            # Update raycasts with obstacles included
-            self.car1.cast_rays(self.track_border_mask, self.obstacle_group)
+            if self.ai_train_mode:
+                self.car1.cast_rays(self.track_border_mask, self.obstacle_group)
 
         if self.car2_active and not self.car2_finished and not self.car2.failed and self.car2_time > 0:
             self._handle_car_movement(self.car2, action2)
             self.check_collision(self.car2)
-            # Update raycasts with obstacles included
-            self.car2.cast_rays(self.track_border_mask, self.obstacle_group)
+            if self.ai_train_mode:
+                self.car2.cast_rays(self.track_border_mask, self.obstacle_group)
 
         self.check_finish()
         
