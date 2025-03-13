@@ -4,16 +4,16 @@ from Car import Car
 from Obstacle import Obstacle
 from drawing import draw_finished, draw_failed, draw_ui, draw_countdown, draw_pause_overlay
 import math
+
 class Environment:
     def __init__(self, surface, ai_train_mode=False, car_color1=None, car_color2=None):
         self.surface = surface
         self.grass = pygame.image.load(GRASS).convert()
         self.ai_train_mode = ai_train_mode
         
-        self.game_states = ["running", "finished", "failed"]
+        self.game_states = ["countdown", "running", "finished", "failed", "paused"]
         self.game_state = "running" if ai_train_mode else "countdown"
         self.previous_state = None
-        self.state_timer = 0 
         
         self.car1_active = car_color1 is not None
         self.car2_active = car_color2 is not None
@@ -21,7 +21,21 @@ class Environment:
         self.car2_finished = False
 
         start_x, start_y = CAR_START_POS
-
+        self._setup_cars(start_x, start_y, car_color1, car_color2)
+        
+        self.num_obstacles = 40 if self.car1_active and self.car2_active else 20
+        self.obstacle_group = pygame.sprite.Group()
+        self._generate_obstacles()
+        
+        self._setup_track()
+        
+        self.car1_time = TARGET_TIME if self.car1_active else 0
+        self.car2_time = TARGET_TIME if self.car2_active else 0
+        self.remaining_time = max(self.car1_time, self.car2_time)
+                
+    def _setup_cars(self, start_x, start_y, car_color1, car_color2):
+        self.all_sprites = pygame.sprite.Group()
+        
         if self.car1_active and self.car2_active:
             self.car1 = Car(start_x + 20, start_y, car_color1)
             self.car2 = Car(start_x - 20, start_y, car_color2)
@@ -31,14 +45,12 @@ class Environment:
             if self.car2_active:
                 self.car2 = Car(start_x, start_y, car_color2)
 
-        self.all_sprites = pygame.sprite.Group()
         if self.car1_active:
             self.all_sprites.add(self.car1)
         if self.car2_active:
-            self.all_sprites.add(self.car2)  
-
-        self.num_obstacles = 40 if self.car1_active and self.car2_active else 20
-
+            self.all_sprites.add(self.car2)
+            
+    def _setup_track(self):
         self.track = pygame.image.load(TRACK).convert_alpha()
         self.track_border = pygame.image.load(TRACK_BORDER).convert_alpha()
         self.track_border_mask = pygame.mask.from_surface(self.track_border)
@@ -49,19 +61,12 @@ class Environment:
         )
         self.finish_line_position = FINISHLINE_POS
         self.finish_mask = pygame.mask.from_surface(self.finish_line)
-
-        self.car1_time = TARGET_TIME if self.car1_active else 0
-        self.car2_time = TARGET_TIME if self.car2_active else 0
-        self.remaining_time = max(self.car1_time, self.car2_time)
         
-        self.obstacle_group = pygame.sprite.Group()
+    def _generate_obstacles(self):
         obstacle_generator = Obstacle(0, 0)
         self.obstacle_group.add(
             obstacle_generator.generate_obstacles(self.num_obstacles) 
         )
-        
-        self.setup_sound()
-        
 
     def run_countdown(self):
         if self.game_state == "countdown":
@@ -96,10 +101,11 @@ class Environment:
 
         self.obstacle_group.draw(self.surface)
         
-        if self.car1_active and self.ai_train_mode:
-            self.car1.draw_rays(self.surface)
-        if self.car2_active and self.ai_train_mode:
-            self.car2.draw_rays(self.surface)
+        if self.ai_train_mode:
+            if self.car1_active and not self.car1_finished and not self.car1.failed:
+                self.car1.draw_rays(self.surface)
+            if self.car2_active and not self.car2_finished and not self.car2.failed:
+                self.car2.draw_rays(self.surface)
         
         self.surface.blit(self.track_border, (0, 0))
         self.all_sprites.draw(self.surface)
@@ -117,15 +123,27 @@ class Environment:
         self.handle_music(False)
 
         start_x, start_y = CAR_START_POS
-        if self.car1_active:
-            self.car1.reset(start_x, start_y)
-            self.car1_finished = False
-            self.car1_time = TARGET_TIME
-            
-        if self.car2_active:
-            self.car2.reset(start_x, start_y)
-            self.car2_finished = False
-            self.car2_time = TARGET_TIME
+        
+        if self.car1_active and self.car2_active:
+            if self.car1_active:
+                self.car1.reset(start_x + 20, start_y)
+                self.car1_finished = False
+                self.car1_time = TARGET_TIME
+                
+            if self.car2_active:
+                self.car2.reset(start_x - 20, start_y)
+                self.car2_finished = False
+                self.car2_time = TARGET_TIME
+        else:
+            if self.car1_active:
+                self.car1.reset(start_x, start_y)
+                self.car1_finished = False
+                self.car1_time = TARGET_TIME
+                
+            if self.car2_active:
+                self.car2.reset(start_x, start_y)
+                self.car2_finished = False
+                self.car2_time = TARGET_TIME
 
         self.remaining_time = max(self.car1_time, self.car2_time)
 
@@ -157,8 +175,6 @@ class Environment:
             else:
                 self.game_state = "failed"
                 
-            self.state_timer = 0
-            
             if self.ai_train_mode:
                 self.restart_game()
                 
@@ -175,19 +191,22 @@ class Environment:
                 self.car1_time = max(0, self.car1_time - 1/FPS)
                 if self.car1_time <= 0:
                     self.car1.can_move = False
-                if self.ai_train_mode:
-                    self.car1.cast_rays(self.track_border_mask, self.obstacle_group)
             
             if self.car2_active and not self.car2_finished and not self.car2.failed:
                 self.car2_time = max(0, self.car2_time - 1/FPS)
                 if self.car2_time <= 0:
                     self.car2.can_move = False
-                if self.ai_train_mode:
-                    self.car2.cast_rays(self.track_border_mask, self.obstacle_group)
                     
             self.remaining_time = max(self.car1_time, self.car2_time)
             
             self.check_game_end_condition()
+            
+            if self.ai_train_mode:
+                if self.car1_active and not self.car1_finished and not self.car1.failed:
+                    self.car1.cast_rays(self.track_border_mask, self.obstacle_group)
+                if self.car2_active and not self.car2_finished and not self.car2.failed:
+                    self.car2.cast_rays(self.track_border_mask, self.obstacle_group)
+            
             self.check_obstacle()
         
         self.all_sprites.update()
@@ -199,14 +218,10 @@ class Environment:
         if self.car1_active and not self.car1_finished and not self.car1.failed and self.car1_time > 0:
             self._handle_car_movement(self.car1, action1)
             self.check_collision(self.car1)
-            if self.ai_train_mode:
-                self.car1.cast_rays(self.track_border_mask, self.obstacle_group)
 
         if self.car2_active and not self.car2_finished and not self.car2.failed and self.car2_time > 0:
             self._handle_car_movement(self.car2, action2)
             self.check_collision(self.car2)
-            if self.ai_train_mode:
-                self.car2.cast_rays(self.track_border_mask, self.obstacle_group)
 
         self.check_finish()
         
@@ -220,7 +235,7 @@ class Environment:
                 if not self.ai_train_mode:
                     self.obstacle_sound.play()
                 obstacle.kill()
-                    
+            
             elif (self.car2_active and not self.car2_finished and not self.car2.failed and 
                   self.car2_time > 0 and pygame.sprite.collide_mask(self.car2, obstacle)):
                 self.car2.velocity *= 0.25  
@@ -264,15 +279,16 @@ class Environment:
             
         moving = action in [1, 2, 5, 6, 7, 8]
         
+        if action in [3, 5, 7]:
+            car.rotate(left=True)
+        elif action in [4, 6, 8]:
+            car.rotate(right=True)
+
         if action in [1, 5, 6]:
             car.accelerate(True)
         elif action in [2, 7, 8]:
             car.accelerate(False)
             
-        if action in [3, 5, 7]:
-            car.rotate(left=True)
-        elif action in [4, 6, 8]:
-            car.rotate(right=True)
             
         if not moving:
             car.reduce_speed()
@@ -346,14 +362,11 @@ class Environment:
         if not self.car1_active:
             return None
             
-        # Make sure to update raycasts before getting data
         self.car1.cast_rays(self.track_border_mask, self.obstacle_group)
         
-        # Normalize ray distances
         normalized_border_rays = [dist / self.car1.ray_length for dist in self.car1.ray_distances_border]
         normalized_obstacle_rays = [dist / self.car1.ray_length for dist in self.car1.ray_distances_obstacles]
 
-        # Combine all state information
         state_list = [
             *normalized_border_rays,
             *normalized_obstacle_rays,
@@ -362,6 +375,6 @@ class Environment:
             math.sin(math.radians(self.car1.angle)),
             self.car1.position.x / WIDTH,
             self.car1.position.y / HEIGHT             
-                ]
+        ]
         
         return state_list
