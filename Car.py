@@ -25,7 +25,7 @@ class Car(pygame.sprite.Sprite):
         self.drift_angle = 0 
         
         self.ray_length = 400
-        self.ray_angles = [0, 10, 20, 30, 40, 75, -10, -20, -30, -40, -75]
+        self.ray_angles = [0, 10, 20, 30, 75, -10, -20, -30, -75, -180, 90, -90]
         self.ray_count = len(self.ray_angles)
         self.ray_distances = [self.ray_length] * self.ray_count
         self.ray_color = GREEN

@@ -23,6 +23,21 @@ class GameMenu:
         self.player1_car_color = "Blue"
         self.player2_car_color = "Red"  
 
+        # Softer color palette with more saturated green and less harsh white
+        self.colors = {
+            "title": "#b68f40",    # Gold/bronze from launcher
+            "p1_base": "#4a7bac",  # More vibrant blue
+            "p2_base": "#ac4a4a",  # More vibrant red
+            "button_base": "#d7fcd4", # From launcher
+            "button_hover": "#f0f0e8", # Softer off-white instead of pure white
+            "selected": "#b68f40",  # Gold/bronze to match title
+            "inactive": "#565656",  # Darker gray
+            "text": "#333333",     # Dark gray instead of BLACK
+            "start": "#5a9e44",    # More saturated green
+            "back": "#666666",     # Soft dark gray
+            "border": "#e0e0d8"    # Off-white for borders instead of pure white
+        }
+
         self.car_images = {}
         for color, path in CAR_COLORS.items():
             image = pygame.image.load(path)
@@ -36,16 +51,16 @@ class GameMenu:
         rect = pygame.Rect(x - width//2, y - height//2, width, height)
         
         if is_selected:
-            pygame.draw.rect(self.screen, WHITE, rect)
+            pygame.draw.rect(self.screen, self.colors["button_hover"], rect)
         else:
-            pygame.draw.rect(self.screen, GRAY, rect)
+            pygame.draw.rect(self.screen, self.colors["inactive"], rect)
         
         if is_disabled:
             s = pygame.Surface((width, height))
             s.set_alpha(200)  
-            s.fill(BLACK)  
+            s.fill(self.colors["text"])  
             self.screen.blit(s, (rect.x, rect.y))
-        pygame.draw.rect(self.screen, WHITE, rect, 2)  
+        pygame.draw.rect(self.screen, self.colors["border"], rect, 2)  
         
         car_image = self.car_images[color]
         car_rect = car_image.get_rect(center=rect.center)
@@ -70,7 +85,7 @@ class GameMenu:
         
         player = 'Player 1' if is_player_one else 'Player 2'
         control_set = controls[player]
-        primary_color = DODGERBLUE if is_player_one else RED
+        primary_color = self.colors["p1_base"] if is_player_one else self.colors["p2_base"]
         
         box_height = 250
         box_width = 200  
@@ -82,10 +97,10 @@ class GameMenu:
             s.fill(primary_color)
             self.screen.blit(s, (box_rect.x + i, box_rect.y + i))
         
-        pygame.draw.rect(self.screen, WHITE, box_rect, 3)
+        pygame.draw.rect(self.screen, self.colors["border"], box_rect, 3)
         
         title_y = y + 25
-        self.draw_text("Controls", self.font_small, WHITE, x, title_y)
+        self.draw_text("Controls", self.font_small, self.colors["button_hover"], x, title_y)
         
         spacing = 45  
         start_y = title_y + spacing + 10
@@ -93,7 +108,7 @@ class GameMenu:
         key_height = 35  
         
         for i, (action, key) in enumerate(control_set.items()):
-            self.draw_text(action, pygame.font.Font(MENUFONT, 12), WHITE, x - 45, start_y + i * spacing) 
+            self.draw_text(action, pygame.font.Font(MENUFONT, 12), self.colors["button_hover"], x - 45, start_y + i * spacing) 
             
             key_x = x + 45 
             
@@ -104,9 +119,9 @@ class GameMenu:
             s.set_alpha(160)
             s.fill(primary_color)
             self.screen.blit(s, key_rect)
-            pygame.draw.rect(self.screen, WHITE, key_rect, 2)
+            pygame.draw.rect(self.screen, self.colors["border"], key_rect, 2)
             
-            self.draw_text(key, pygame.font.Font(MENUFONT, 12), WHITE, key_x, start_y + i * spacing)
+            self.draw_text(key, pygame.font.Font(MENUFONT, 12), self.colors["button_hover"], key_x, start_y + i * spacing)
 
     def draw_text(self, text, font, color, x, y):
         render = font.render(text, True, color)
@@ -115,9 +130,9 @@ class GameMenu:
 
     def create_radio_button(self, x, y, selected):
         radius = 20  
-        color = GOLD if selected else FOGGRAY
+        color = self.colors["selected"] if selected else self.colors["inactive"]
         pygame.draw.circle(self.screen, color, (x, y), radius)
-        pygame.draw.circle(self.screen, WHITE, (x, y), radius, 2)
+        pygame.draw.circle(self.screen, self.colors["border"], (x, y), radius, 2)
         return pygame.Rect(x - radius, y - radius, radius * 2, radius * 2)
 
     def create_button(self, x, y, width, height, text, color, disabled=False):
@@ -131,9 +146,9 @@ class GameMenu:
         else:
             pygame.draw.rect(self.screen, color, rect)
         
-        pygame.draw.rect(self.screen, WHITE, rect, 2)
+        pygame.draw.rect(self.screen, self.colors["border"], rect, 2)
         
-        text_color = FOGGRAY if disabled else WHITE
+        text_color = self.colors["inactive"] if disabled else self.colors["button_hover"]
         text_surface = self.font_big.render(text, True, text_color)
         text_rect = text_surface.get_rect(center=rect.center)
         self.screen.blit(text_surface, text_rect)
@@ -167,15 +182,15 @@ class GameMenu:
         while running:
             self.screen.blit(self.background, (0,0))
             
-            self.draw_text("Race Settings", self.font_title, BLACK, center_x + 3, 78)
-            self.draw_text("Race Settings", self.font_title, "#b68f40", center_x, 75)
+            self.draw_text("Race Settings", self.font_title, self.colors["text"], center_x + 3, 78)
+            self.draw_text("Race Settings", self.font_title, self.colors["title"], center_x, 75)
             
             if self.player1_selection:
                 self.draw_controls_info(controls_p1_x, controls_y, True)
             if self.player2_selection:
                 self.draw_controls_info(controls_p2_x, controls_y, False)
 
-            self.draw_text("Player 1", self.font_small, DODGERBLUE, p1_x, player_section_top)
+            self.draw_text("Player 1", self.font_small, self.colors["p1_base"], p1_x, player_section_top)
             player1_buttons = [
                 self.create_button(
                     p1_x, 
@@ -183,12 +198,12 @@ class GameMenu:
                     button_width, 
                     button_height, 
                     text, 
-                    DODGERBLUE if self.player1_selection == text else GRAY
+                    self.colors["p1_base"] if self.player1_selection == text else self.colors["inactive"]
                 )
                 for i, text in enumerate(["Human", "DQN"])   
             ]
             
-            self.draw_text("Car", self.font_small, DODGERBLUE, p1_car_x, player_section_top)
+            self.draw_text("Car", self.font_small, self.colors["p1_base"], p1_car_x, player_section_top)
             p1_color_buttons = [
                 self.create_car_button(
                     p1_car_x,
@@ -202,7 +217,7 @@ class GameMenu:
                 for i, color in enumerate(["Red", "Blue", "Green", "Yellow", "ice"])
             ]
             
-            self.draw_text("Player 2", self.font_small, RED, p2_x, player_section_top)
+            self.draw_text("Player 2", self.font_small, self.colors["p2_base"], p2_x, player_section_top)
             player2_buttons = [
                 self.create_button(
                     p2_x, 
@@ -210,12 +225,12 @@ class GameMenu:
                     button_width, 
                     button_height, 
                     text, 
-                    RED if self.player2_selection == text else GRAY
+                    self.colors["p2_base"] if self.player2_selection == text else self.colors["inactive"]
                 )
                 for i, text in enumerate(["Human", "DQN"]) 
             ]
             
-            self.draw_text("Car", self.font_small, RED, p2_car_x, player_section_top)
+            self.draw_text("Car", self.font_small, self.colors["p2_base"], p2_car_x, player_section_top)
             p2_color_buttons = [
                 self.create_car_button(
                     p2_car_x,
@@ -229,9 +244,9 @@ class GameMenu:
                 for i, color in enumerate(["Red", "Blue", "Green", "Yellow", "ice"])
             ]
 
-            start_button = self.create_button(center_x, start_button_y, 300, 100, "Start Race", GREEN)
+            start_button = self.create_button(center_x, start_button_y, 300, 100, "Start Race", self.colors["start"])
             
-            back_button = self.create_button(back_button_x, back_button_y, 150, 60, "Back", DARKGRAY)
+            back_button = self.create_button(back_button_x, back_button_y, 150, 60, "Back", self.colors["back"])
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
