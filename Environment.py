@@ -32,6 +32,8 @@ class Environment:
         self.car1_time = TARGET_TIME if self.car1_active else 0
         self.car2_time = TARGET_TIME if self.car2_active else 0
         self.remaining_time = max(self.car1_time, self.car2_time)
+
+        self.setup_sound()
                 
     def _setup_cars(self, start_x, start_y, car_color1, car_color2):
         self.all_sprites = pygame.sprite.Group()
