@@ -41,10 +41,19 @@ def start_training():
     
     # Initialize training components
     state_dim = len(environment.state())  # Size of state representation
-    action_dim = 8 # 0 nothing 1 accelerate 2 brake 3 turn left 4 turn right 5 accelerate + turn left 6 accelerate + turn right 7 backward + turn left 8 backward + turn right
+    action_dim = 8  # 0 nothing 1 accelerate 2 brake 3 turn left 4 turn right 5 accelerate + turn left 6 accelerate + turn right 7 backward + turn left 8 backward + turn right
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     agent = DQNAgent(state_dim, action_dim, device=device)
+    
+    # Load pre-trained model if it exists
+    model_checkpoint = "models/dqn_episode_0.pth"  # Path to your model checkpoint
+    if os.path.exists(model_checkpoint):
+        agent.load_model(model_checkpoint)  # Load the model
+        print(f"Loaded pre-trained model from {model_checkpoint}")
+    else:
+        print("No pre-trained model found. Starting fresh training.")
+    
     agent.gamma = 0.99  # Same as DDQN
     agent.lr = 0.0005   # Similar to DDQN
     agent.batch_size = 64  # Same as DDQN
@@ -55,7 +64,7 @@ def start_training():
     
     # Training parameters
     max_episodes = 10000  # More episodes like in DDQN
-    save_interval = 100   # Save less frequently
+    save_interval = 100   # Save less frequently (save every 100 episodes)
     training_info = {
         'episode': 0,
         'steps': 0,
@@ -63,6 +72,7 @@ def start_training():
         'loss': None,
         'epsilon': agent.epsilon
     }
+    
     # Run training loop
     train_loop(environment, agent, max_episodes, save_interval, training_info, clock)
     

@@ -132,7 +132,7 @@ class DQNAgent:
             episode (int): Current episode number
         """
         model_path = os.path.join(self.model_dir, f"dqn_episode_{episode}.pth")
-        self.policy_net.save(model_path)
+        torch.save(self.policy_net.state_dict(), model_path)  # Save the model weights
         print(f"Model saved to {model_path}")
         
     def load_model(self, filepath):
@@ -142,6 +142,6 @@ class DQNAgent:
         Args:
             filepath (str): Path to the model file
         """
-        self.policy_net.load(filepath)
-        self.target_net.load_state_dict(self.policy_net.state_dict())
+        self.policy_net.load_state_dict(torch.load(filepath))  # Load model weights
+        self.target_net.load_state_dict(self.policy_net.state_dict())  # Copy weights to target network
         print(f"Model loaded from {filepath}")
