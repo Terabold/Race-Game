@@ -1,3 +1,4 @@
+import numpy as np
 FPS = 60
 WIDTH, HEIGHT = 1600, 900
 MENUWIDTH, MENUHEIGHT = 1280, 720
@@ -26,7 +27,7 @@ CAR_COLORS = {
 }
 
 CAR_START_POS = (350, 225)
-FINISHLINE_POS = [250, 250] 
+FINISHLINE_POS = np.array([250, 250])
 FINISHLINE_SIZE = (180, 25)
 TARGET_TIME = 35.0
 TRACK_BORDER = r"data\photo\track1-border.png"

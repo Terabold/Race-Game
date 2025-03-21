@@ -41,7 +41,7 @@ def start_training():
     
     # Initialize training components
     state_dim = len(environment.state())  # Size of state representation
-    action_dim = 8  # 0 nothing 1 accelerate 2 brake 3 turn left 4 turn right 5 accelerate + turn left 6 accelerate + turn right 7 backward + turn left 8 backward + turn right
+    action_dim = 6  # 0 nothing 1 accelerate 2 brake 3 turn left 4 turn right 5 accelerate + turn left 6 accelerate + turn right
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     agent = DQNAgent(state_dim, action_dim, device=device)
@@ -145,6 +145,9 @@ def train_loop(environment, agent, max_episodes, save_interval, training_info, c
                 game_action = 3  # Turn left
             elif action_idx == 4:
                 game_action = 4  # Turn right
+            elif action_idx == 5:
+                game_action = 5  # Accelerate + turn left
+
             
             # Take action in environment
             pre_collision = environment.car1.failed
@@ -192,14 +195,14 @@ def train_loop(environment, agent, max_episodes, save_interval, training_info, c
         environment.draw()
         
         # Draw training information
-        draw_training_info(
-            environment.surface,
-            training_info['episode'],
-            training_info['steps'],
-            training_info['episode_reward'],
-            training_info['epsilon'],
-            training_info['loss']
-        )
+        # draw_training_info(
+        #     environment.surface,
+        #     training_info['episode'],
+        #     training_info['steps'],
+        #     training_info['episode_reward'],
+        #     training_info['epsilon'],
+        #     training_info['loss']
+        # )
         
         pygame.display.update()
     
