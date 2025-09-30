@@ -1,8 +1,8 @@
 import pygame
-from Constants import *
-from Car import Car
-from Obstacle import Obstacle
-from drawing import draw_finished, draw_failed, draw_ui, draw_countdown, draw_pause_overlay
+from scripts.Constants import *
+from scripts.Car import Car
+from scripts.Obstacle import Obstacle
+from scripts.drawing import draw_finished, draw_failed, draw_ui, draw_countdown, draw_pause_overlay
 import math
 import numpy as np
 

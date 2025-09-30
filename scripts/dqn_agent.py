@@ -4,8 +4,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 import random
 import os
-from dqn import DQN
-from replaybuffer import ReplayBuffer
+from scripts.dqn import DQN
+from scripts.replaybuffer import ReplayBuffer
 
 class DQNAgent:
     """

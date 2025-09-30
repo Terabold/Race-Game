@@ -1,7 +1,7 @@
 import math
 import pygame
 from pygame.math import Vector2
-from Constants import *
+from scripts.Constants import *
 
 class Car(pygame.sprite.Sprite): 
     def __init__(self, x, y, car_color="Red"):
@@ -48,71 +48,53 @@ class Car(pygame.sprite.Sprite):
 
     def cast_rays(self, border_mask, obstacle_group=None):
         """Cast rays to detect track borders and obstacles"""
-        # Reset ray data
-        self.ray_distances_border = []
-        self.ray_distances_obstacles = []
-        self.ray_collision_points = []
+        # Initialize arrays
+        self.ray_distances_border = [self.ray_length] * self.ray_count
+        self.ray_distances_obstacles = [self.ray_length] * self.ray_count
+        self.ray_collision_points = [None] * self.ray_count
         
-        # Get current car rotation
-        car_rotation = -self.angle  # Negative because pygame rotation is clockwise
-
-        # Cast each ray
-        for direction in self.ray_directions:
-            # Rotate ray direction according to car's current angle
+        car_rotation = -self.angle
+        
+        for idx, direction in enumerate(self.ray_directions):  # Add enumerate
             ray_dir = direction.rotate(car_rotation)
             
-            # Track detection flags and distances
             found_border = False
             found_obstacle = False
             border_dist = self.ray_length
             obstacle_dist = self.ray_length
-            collision_point = None
 
-            # Step along ray path
-            for dist in range(1, self.ray_length + 1, 5):  # Step by 5 for performance
-                # Calculate endpoint of current ray segment
+            for dist in range(1, self.ray_length + 1, 5):
                 end_pos = self.position + ray_dir * dist
                 x, y = int(end_pos.x), int(end_pos.y)
 
-                # Make sure we're within screen bounds
                 if 0 <= x < border_mask.get_size()[0] and 0 <= y < border_mask.get_size()[1]:
-                    
-                    # Check if ray hit track border
                     if not found_border and border_mask.get_at((x, y)):
                         border_dist = dist
                         found_border = True
                     
-                    # Check if ray hit an obstacle
                     if obstacle_group and not found_obstacle:
                         for obstacle in obstacle_group:
                             if obstacle.rect.collidepoint(x, y):
-                                # Convert to obstacle local coordinates
                                 obs_offset = (x - obstacle.rect.x, y - obstacle.rect.y)
-                                
-                                # Make sure we're within obstacle mask bounds
                                 try:
                                     if (0 <= obs_offset[0] < obstacle.mask.get_size()[0] and 
                                         0 <= obs_offset[1] < obstacle.mask.get_size()[1]):
-                                        # Check mask collision
                                         if obstacle.mask.get_at(obs_offset):
                                             obstacle_dist = dist
                                             found_obstacle = True
                                             break
                                 except IndexError:
-                                    # Skip if we're out of bounds
                                     pass
                 
-                # If we've found both border and obstacle hit, we can stop casting this ray
                 if found_border and found_obstacle:
                     break
 
-            # Store distances for this ray
-            self.ray_distances_border.append(border_dist)
-            self.ray_distances_obstacles.append(obstacle_dist)
+            # USE INDEXING instead of append
+            self.ray_distances_border[idx] = border_dist
+            self.ray_distances_obstacles[idx] = obstacle_dist
             
-            # Store collision point (using the closer of the two hits)
             min_dist = min(border_dist, obstacle_dist)
-            self.ray_collision_points.append(self.position + ray_dir * min_dist)
+            self.ray_collision_points[idx] = self.position + ray_dir * min_dist
 
     def draw_rays(self, surface):
         """Draw the ray sensors and collision points"""

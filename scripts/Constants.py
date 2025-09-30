@@ -1,4 +1,15 @@
 import numpy as np
+import pygame
+
+pygame.init()
+info = pygame.display.Info()
+
+REFERENCE_SIZE = (1920, 1080)
+screen_width, screen_height = info.current_w, info.current_h
+DISPLAY_SIZE = (screen_width, screen_height)
+aspect_x = DISPLAY_SIZE[0] - (DISPLAY_SIZE[0] % 16)
+aspect_y = DISPLAY_SIZE[1] - (DISPLAY_SIZE[1] % 9)
+DISPLAY_SIZE = (aspect_x, aspect_y)
 FPS = 60
 WIDTH, HEIGHT = 1600, 900
 MENUWIDTH, MENUHEIGHT = 1280, 720
@@ -236,18 +247,25 @@ BOMB = r'data\photo\bomb.png'
 FONT = r"data\fonts\Default.otf"
 COUNTDOWN_FONT = r'data\fonts\CountDownFont.otf'
 MENUFONT = r'data\fonts\Menu.ttf'
-
+BASE_IMG_PATH = 'data/images/'
+FONT = r'data\fonts\Menu.ttf'
 MAXSPEED = 6.0
 ROTATESPEED = 5.0
 ACCELERATION = 0.12
-
+SOUND_EXTENSIONS = ('.mp3', '.wav', '.ogg')
+DEFAULT_REMOVE_COLOR = (0, 0, 0)
+DEFAULT_SOUND_VOLUME = 0.05
+DEFAULT_HOVER_VOLUME = 0.01
+DEFAULT_CLICK_VOLUME = 0.05
+MIN_FONT_SIZE = 12
+MAX_FONT_SIZE = 72
 # Assets
 FINISHLINE = r'data\photo/finish.png'
 GRASS = r'data\photo\grass2.jpg'
 CHECKPOINT = r'data\photo\checkpoint.jpg'
-MENU = r'data\photo\Background.png'
+MENU = r'data\photo\Background.jpg'
 RECT = r'data\photo\Rect.png'
-
+MENUBG = r'data\photo\Background.jpg'
 # Sound
 WIN_SOUND = r'data\sound/victory.wav'
 COUNTDOWN_SOUND = r'data\sound/countdown.mp3'

@@ -3,10 +3,10 @@ import sys
 import os
 import numpy as np
 import torch
-from Environment import Environment
-from Constants import *
-from dqn_agent import DQNAgent
-from TrainingUtils import (
+from scripts.Environment import Environment
+from scripts.Constants import *
+from scripts.dqn_agent import DQNAgent
+from scripts.TrainingUtils import (
     calculate_reward,
     process_state,
     map_action_to_game_action,

@@ -1,5 +1,5 @@
 import pygame
-from Constants import *
+from scripts.Constants import *
 import math
 def font_scale(size, Font=FONT):
     return pygame.font.Font(Font, size)
