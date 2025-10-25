@@ -32,9 +32,9 @@ DARKGRAY = 	(20,20,20)
 CAR_COLORS = {
     "Red": r"data\photo\car-red.png",
     "Blue": r"data\photo/car-blue.png",
-    "Green": r"data\photo/car-green.png",
+    "Black": r"data\photo/car-black.png",
     "Yellow": r"data\photo/car-yellow.png",
-    "ice": r"data\photo/car-ice.png",
+    "White": r"data\photo/car-white.png",
 }
 
 CAR_START_POS = (350, 225)

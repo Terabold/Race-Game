@@ -9,6 +9,10 @@ class GameStateManager:
         self.player2_selection = None
         self.player1_car_color = "Blue"
         self.player2_car_color = "Red"
+
+        # If training_mode is True, starting the game will put the Environment
+        # into ai_train_mode (skips countdown, silent, optimized).
+        self.training_mode = False
         
     def setState(self, new_state):
         """Change to a new game state"""
