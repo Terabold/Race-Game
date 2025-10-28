@@ -161,3 +161,4 @@ def draw_countdown(environment, count):
         (shadow_surface, shadow_rect),
         (text, text_rect)
     ))
+    

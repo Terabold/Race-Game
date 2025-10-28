@@ -1,165 +1,293 @@
-"""
-Fast headless trainer.
-
-Run: python -m scripts.trainer or python scripts/trainer.py
-
-This trainer runs headless (no display), does not call clock.tick or flip,
-and runs episodes as fast as possible. It saves a single model file
-(models/model.pt) after every episode and on interrupt.
-
-Notes:
-- Requires your Environment to support ai_train_mode=True (skips countdown/drawing).
-- Uses SDL dummy video driver to avoid opening a window (so image loading still works).
-"""
-
 import os
-# Use SDL dummy driver before pygame.init so no window is opened
-os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-
 import pygame
 import sys
 import time
 import numpy as np
 import torch
 
-# PyTorch perf tweaks
 if torch.cuda.is_available():
     torch.backends.cudnn.benchmark = True
 
-from scripts.Environment import Environment
+from scripts.AIEnvironment import AIEnvironment
 from scripts.Constants import *
 from scripts.dqn_agent import DQNAgent
-from scripts.TrainingUtils import (
-    calculate_reward,
-    process_state,
-    map_action_to_game_action,
-    save_training_stats
-)
+from scripts.TrainingUtils import calculate_reward, save_training_stats, draw_reward_overlay
+from scripts.GameManager import game_state_manager
 
-def start_training():
-    # Settings for training run
-    settings = {
-        'player1': 'DQN',
-        'player2': None,
-        'car_color1': 'Red',
-        'car_color2': None
-    }
+# Constants
+STATE_DIM = 16
+ACTION_DIM = 8
 
-    # Initialize pygame in dummy mode (no visible window)
-    pygame.init()
-    # Do not init mixer (audio) — keep headless and silent
-    pygame.mixer.quit()
 
-    # Create an off-screen surface (no window)
-    surface = pygame.Surface((WIDTH, HEIGHT))
-
-    # Create environment in AI training mode (skips countdown/drawing heavy code)
-    environment = Environment(
-        surface,
-        ai_train_mode=True,
-        car_color1=settings['car_color1'],
-        car_color2=settings['car_color2']
-    )
-
-    # Determine state and action dims
-    state_vec = environment.state()
-    state_dim = len(state_vec) if state_vec is not None else environment.get_state_dim()
-    action_dim = environment.get_action_dim()
-
-    # Device
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Training device: {device}")
-
-    # Agent (single-file model)
-    agent = DQNAgent(state_dim, action_dim, device=device)
-
-    # Load existing single model if available (models/model.pt)
-    if os.path.exists(agent.model_path):
-        ok = agent.load_model(agent.model_path)
-        if ok:
-            print(f"Loaded model from {agent.model_path}")
+class Trainer:
+    """Training state module that runs inside the main game loop"""
+    
+    def __init__(self, display, clock):
+        self.display = display
+        self.clock = clock
+        self.environment = None
+        self.agent = None
+        self.initialized = False
+        
+        # Training state
+        self.steps = 0
+        self.episode_reward = 0.0
+        self.losses = []
+        self.episode_breakdown = {
+            'speed': 0.0,
+            'edge': 0.0,
+            'time': 0.0,
+            'obstacle': 0.0,
+            'finish': 0.0,
+            'collision': 0.0,
+            'timeout': 0.0,
+            'total': 0.0
+        }
+        self.state = None
+        
+        # Timing
+        self.start_time = None
+        self.fps_counter = 0
+        self.fps_timer = None
+        self.current_fps = 0
+        
+        # Episode limits
+        self.max_episode_steps = 100000
+        
+    def initialize(self):
+        """Initialize training environment and agent"""
+        if self.initialized:
+            return
+            
+        print("\n" + "="*80)
+        print("INITIALIZING TRAINING MODE")
+        print("="*80)
+        
+        # Quit mixer for performance
+        pygame.mixer.quit()
+        
+        # Create AI environment
+        self.environment = AIEnvironment(self.display)
+        
+        # Setup agent
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        print(f"Training on: {device}")
+        
+        self.agent = DQNAgent(STATE_DIM, ACTION_DIM, device=device)
+        
+        # Load existing model if available
+        if os.path.exists(self.agent.model_path):
+            if self.agent.load_model(self.agent.model_path):
+                print(f"Resuming training from episode {self.agent.episode_count}")
+            else:
+                print("Starting fresh training")
         else:
-            print("Found model file but failed to load. Training from scratch.")
-    else:
-        # Ensure directory exists and save an initial model so subsequent runs find it
-        os.makedirs(agent.model_dir, exist_ok=True)
-        agent.save_model()
-        print(f"Saved initial model to {agent.model_path}")
-
-    # Training hyperparams (you can tweak these)
-    max_episode_steps = 10000        # safety cap per episode
-    save_every_n_episodes = 1        # we save every episode
-    episode = 0
-
-    # Minimal stats file
-    stats_file = "training_stats.csv"
-
-    print("Starting headless fast training. Press Ctrl+C to stop (will save model).")
-
-    while True:
-        # Prepare new episode
-        environment.restart_game()
-        episode += 1
-        steps = 0
-        episode_reward = 0.0
-        losses = []
-
-        # Make sure episode_ended flag reset
-        environment.episode_ended = False
-
-        # Warm-start optional: get initial state
-        state = process_state(environment)
-
-        # Run the episode as fast as possible
-        while environment.game_state == "running":
-            # pump events so SDL internals don't block (no window open)
-            pygame.event.pump()
-
-            # Get state
-            state = process_state(environment)
-
-            # Agent selects action (training=True => epsilon-greedy)
-            action_idx = agent.get_action(state, training=True)
-            game_action = map_action_to_game_action(action_idx)
-
-            # Step the environment (this updates physics and may auto-restart if ended)
-            pre_failed = environment.car1.failed
-            done = environment.move(game_action, None)
-            post_failed = environment.car1.failed
-            collision = (not pre_failed) and post_failed
-
-            # Next state
-            next_state = process_state(environment)
-
-            # Reward (small magnitude)
-            reward = calculate_reward(environment, prev_state=state, done=done, collision=collision)
-
-            # Store transition
-            agent.replay_buffer.add(state, action_idx, reward, next_state,
-                                    environment.car1_finished or environment.car1.failed or done)
-
-            # Update agent (single gradient step)
-            loss = agent.update()
+            os.makedirs(self.agent.model_dir, exist_ok=True)
+            self.agent.save_model()
+            print(f"Created new model at {self.agent.model_path}")
+        
+        # Initialize timing
+        self.start_time = time.time()
+        self.fps_timer = time.time()
+        
+        print("\n" + "="*80)
+        print("Epsilon Decay: Step-based")
+        print(f"  Start: {self.agent.epsilon:.4f}")
+        print(f"  Min: {self.agent.epsilon_min}")
+        print(f"  Decay rate: {self.agent.epsilon_decay} per step")
+        print(f"  Current episode: {self.agent.episode_count}")
+        print("="*80 + "\n")
+        print("Training started. Press ESC to return to menu.\n")
+        
+        # Start first episode
+        self._start_new_episode()
+        
+        self.initialized = True
+    
+    def _start_new_episode(self):
+        """Start a new training episode"""
+        self.environment.reset()
+        self.steps = 0
+        self.episode_reward = 0.0
+        self.losses = []
+        
+        # Reset breakdown
+        for key in self.episode_breakdown:
+            self.episode_breakdown[key] = 0.0
+        
+        self.state = self.environment.get_state()
+    
+    def _end_episode(self):
+        """End current episode and save stats"""
+        self.agent.end_episode(self.episode_reward)  # Pass reward for tracking
+        
+        # Determine status
+        if self.environment.car_finished:
+            status = "FINISH"
+        elif self.environment.car_crashed:
+            status = "CRASH"
+        elif self.environment.car_timeout:
+            status = "TIMEOUT"
+        else:
+            status = "UNKNOWN"
+        
+        # Save every 10 episodes
+        if self.agent.episode_count % 10 == 0:
+            self.agent.save_model()
+            save_training_stats(
+                self.agent.episode_count, 
+                self.episode_reward, 
+                self.losses, 
+                self.agent.epsilon
+            )
+        
+        # Calculate stats
+        avg_loss = np.mean(self.losses) if self.losses else 0.0
+        
+        # Print episode summary
+        print(f"Ep {self.agent.episode_count:4d} | {status:7s} | Steps: {self.steps:4d} | "
+              f"R: {self.episode_breakdown['total']:7.1f} | "
+              f"Spd: {self.episode_breakdown['speed']:+6.1f} | "
+              f"Edge: {self.episode_breakdown['edge']:+6.1f} | "
+              f"Obst: {self.episode_breakdown['obstacle']:+5.1f} | "
+              f"Fin: {self.episode_breakdown['finish']:+6.1f} | "
+              f"Col: {self.episode_breakdown['collision']:+6.1f} | "
+              f"Tout: {self.episode_breakdown['timeout']:+6.1f} | "
+              f"Loss: {avg_loss:.3f} | ε: {self.agent.epsilon:.3f} | "
+              f"FPS: {self.current_fps:.0f}")
+        
+        # Milestone every 100 episodes
+        if self.agent.episode_count % 100 == 0:
+            elapsed = time.time() - self.start_time
+            print("\n" + "="*80)
+            print(f"MILESTONE - Episode {self.agent.episode_count}")
+            print(f"  Epsilon: {self.agent.epsilon:.4f} → {self.agent.epsilon_min}")
+            print(f"  Buffer: {len(self.agent.replay_buffer)}/{self.agent.replay_buffer.capacity}")
+            print(f"  Time: {elapsed/60:.1f} minutes")
+            print(f"  FPS: {self.current_fps:.0f}")
+            print("="*80 + "\n")
+        
+        # Start next episode
+        self._start_new_episode()
+    
+    def run(self, dt):
+        """Main training loop - called every frame"""
+        if not self.initialized:
+            self.initialize()
+        
+        # Handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self._save_and_exit()
+                
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    # Return to menu
+                    print("\n\nReturning to menu...")
+                    self.agent.save_model()
+                    print(f"Saved at episode {self.agent.episode_count}")
+                    game_state_manager.setState('menu')
+                    return
+        
+        # Training step
+        if not self.environment.episode_ended and self.steps < self.max_episode_steps:
+            # Get action
+            action = self.agent.get_action(self.state, training=True)
+            
+            # Execute step
+            next_state, step_info, done = self.environment.step(action)
+            
+            # Calculate reward
+            reward_breakdown = calculate_reward(
+                self.environment, 
+                collision=step_info['collision'],
+                just_finished=step_info['finished'],
+                action=action, 
+                hit_obstacle=step_info['hit_obstacle'],
+                timeout=step_info['timeout'],
+                episode=self.agent.episode_count
+            )
+            
+            reward = reward_breakdown['total']
+            
+            # Accumulate breakdown
+            for key in self.episode_breakdown:
+                self.episode_breakdown[key] += reward_breakdown.get(key, 0.0)
+            
+            # Store experience and update
+            self.agent.replay_buffer.add(self.state, action, reward, next_state, done)
+            
+            loss = self.agent.update()
             if loss is not None:
-                losses.append(loss)
-
-            # Stats
-            steps += 1
-            episode_reward += reward
-
-            # Safety cap to prevent infinite episodes
-            if steps >= max_episode_steps:
-                # Force environment to end by marking car failed/time out
-                # (Environment will set episode_ended and auto-restart)
-                environment.car1.can_move = False
-                break
-
-        # Episode ended (Environment auto-restarts when ai_train_mode=True)
-        # Save model and stats
-        agent.save_model()
-        save_training_stats(episode, episode_reward, losses, agent.epsilon, filename=stats_file)
-        print(f"[Episode {episode}] steps={steps} reward={episode_reward:.4f} eps={agent.epsilon:.4f} losses={len(losses)}")
-
-
-if __name__ == "__main__":
-    start_training()
+                self.losses.append(loss)
+            
+            self.steps += 1
+            self.episode_reward += reward
+            self.state = next_state
+            self.fps_counter += 1
+            
+            # Update FPS counter
+            current_time = time.time()
+            if current_time - self.fps_timer >= 1.0:
+                self.current_fps = self.fps_counter / (current_time - self.fps_timer)
+                self.fps_counter = 0
+                self.fps_timer = current_time
+        else:
+            # Episode ended
+            self._end_episode()
+        
+        # Draw environment
+        self.environment.draw()
+        
+        # Draw speed info (top right)
+        self._draw_speed_info()
+        
+        # Draw training overlay
+        draw_reward_overlay(self.display, self.episode_breakdown, self.agent.episode_count)
+    
+    def _draw_speed_info(self):
+        """Draw speed percentage at top right (below time)"""
+        y_offset = 60  # Below the time display
+        
+        # Get speed ratio
+        speed_ratio = self.environment.car.velocity / self.environment.car.max_velocity
+        speed_text = f"Speed: {speed_ratio:.1%}"
+        
+        # Color based on speed
+        if speed_ratio > 0.7:
+            speed_color = GREEN
+        elif speed_ratio > 0.3:
+            speed_color = YELLOW
+        else:
+            speed_color = RED
+        
+        # Create shadowed text
+        from scripts.TrainingUtils import create_shadowed_text, font_scale
+        speed_font = font_scale(28, FONT)
+        speed_surface = create_shadowed_text(speed_text, speed_font, speed_color)
+        
+        # Position at top right
+        self.display.blit(
+            speed_surface, 
+            (WIDTH - speed_surface.get_width() - 20, y_offset)
+        )
+    
+    def _save_and_exit(self):
+        """Save model and exit"""
+        print("\n\nWindow closed - saving model...")
+        if self.agent:
+            self.agent.save_model()
+            print(f"Saved at episode {self.agent.episode_count}")
+            
+            elapsed = time.time() - self.start_time
+            print("\n" + "="*80)
+            print("Training Summary:")
+            print(f"  Episodes: {self.agent.episode_count}")
+            print(f"  Time: {elapsed/60:.1f} minutes")
+            print(f"  Final ε: {self.agent.epsilon:.4f}")
+            print(f"  Buffer: {len(self.agent.replay_buffer)}")
+            print("="*80)
+            print("\nModel saved. Exiting.")
+        
+        pygame.quit()
+        sys.exit(0)

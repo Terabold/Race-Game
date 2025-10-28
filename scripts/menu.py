@@ -42,25 +42,14 @@ class Menu:
             self._return_to_main()
 
     def start_game(self):
-        # Ensure we clear training flag when starting normal game
+        """Start normal gameplay"""
         game_state_manager.training_mode = False
         game_state_manager.setState('game')
 
     def start_training(self):
-        """
-        Start AI run *inside the normal game loop*:
-         - set the game manager flags so Game.initialize_environment will create
-           the Environment in ai_train_mode and create a DQN agent for player 1.
-         - do NOT call any blocking trainer function here.
-        """
+        """Start AI training mode as separate state"""
         game_state_manager.training_mode = True
-        # Ensure player 1 is DQN for training runs
-        game_state_manager.player1_selection = "DQN"
-        # Choose a default car for training if none selected
-        if not game_state_manager.player1_car_color:
-            game_state_manager.player1_car_color = "Red"
-        # Start the game state; Engine will call Game.initialize_environment()
-        game_state_manager.setState('game')
+        game_state_manager.setState('training')
 
     def quit_game(self):
         pygame.time.delay(300)
@@ -87,14 +76,13 @@ class MainMenuScreen(MenuScreen):
         self.title = "RACING GAME"
         self.clear_buttons()
 
-        # Larger buttons for main menu
         center_x = self.screen.get_width() // 2
         start_y = int(self.screen.get_height() * 0.3)
-        button_width = int(self.screen.get_width() * 0.25)  # Bigger buttons
+        button_width = int(self.screen.get_width() * 0.25)
 
         button_configs = [
             ('PLAY', self.menu._show_settings_menu, None),
-            ('TRAIN AI', self.menu.start_training, None),
+            ('TRAIN AI', self.menu.start_training, (70, 100, 180)),
             ('QUIT', self.menu.quit_game, (200, 50, 50))
         ]
 
@@ -110,7 +98,6 @@ class MainMenuScreen(MenuScreen):
 
 
 class RaceSettingsScreen(MenuScreen):
-    # Color palette
     COLORS = {
         "title": "#ffb521",
         "p1_base": "#0080ff",
@@ -124,16 +111,13 @@ class RaceSettingsScreen(MenuScreen):
         "border": "#e0e0d8"
     }
 
-    # Keep a local list of color names for display; don't shadow the global CAR_COLORS dict
     CAR_COLOR_NAMES = ["Red", "Blue", "Black", "Yellow", "White"]
 
     def __init__(self, menu):
         super().__init__(menu, "Race Settings")
 
-        # Load and prepare car images
         self.car_images = self._load_car_images()
 
-        # Initialize fonts
         self.info_font = pygame.font.Font(
             self.menu.font_path,
             int(self.screen.get_height() * 0.02)
@@ -143,14 +127,12 @@ class RaceSettingsScreen(MenuScreen):
             int(self.screen.get_height() * 0.025)
         )
 
-        # Button tracking
         self.player1_buttons = []
         self.player2_buttons = []
         self.p1_car_buttons = []
         self.p2_car_buttons = []
 
     def _load_car_images(self):
-        """Load and scale car images from the global CAR_COLORS mapping."""
         car_images = {}
         for color_name in self.CAR_COLOR_NAMES:
             path = CAR_COLORS.get(color_name)
@@ -167,38 +149,31 @@ class RaceSettingsScreen(MenuScreen):
 
     def initialize(self):
         self.title = "Race Settings"
-        # Clear base MenuScreen buttons
         self.clear_buttons()
-        # IMPORTANT: clear our own lists to avoid duplicates when initialize() is called multiple times
         self.player1_buttons.clear()
         self.player2_buttons.clear()
         self.p1_car_buttons.clear()
         self.p2_car_buttons.clear()
 
-        # Layout calculations - tighter spacing
         screen_w = self.screen.get_width()
         screen_h = self.screen.get_height()
         center_x = screen_w // 2
 
-        # Tighter column spacing (moved closer to center)
-        col_offset = int(screen_w * 0.12)  # Reduced from 0.15
-        car_offset = int(screen_w * 0.16)  # Reduced from 0.2
+        col_offset = int(screen_w * 0.12)
+        car_offset = int(screen_w * 0.16)
 
         p1_x = center_x - col_offset
         p2_x = center_x + col_offset
         p1_car_x = center_x - car_offset - col_offset
         p2_car_x = center_x + car_offset + col_offset
 
-        # Button dimensions
         button_width = int(screen_w * 0.15)
         car_button_width = int(screen_w * 0.1)
         button_height = self.UI_CONSTANTS['BUTTON_HEIGHT']
 
-        # Reduced spacing between title and content
-        player_section_top = int(screen_h * 0.20)  # Reduced from 0.25
+        player_section_top = int(screen_h * 0.20)
         section_spacing = button_height + int(self.UI_CONSTANTS['BUTTON_SPACING'] * 0.8)
 
-        # Create all buttons
         self._create_player_buttons(
             p1_x, p2_x, button_width,
             player_section_top, section_spacing
@@ -210,11 +185,9 @@ class RaceSettingsScreen(MenuScreen):
         self._create_action_buttons(center_x, screen_w, screen_h)
 
     def _create_player_buttons(self, p1_x, p2_x, button_width, top_y, spacing):
-        """Create player type selection buttons"""
         for i, text in enumerate(["Human", "DQN"]):
             y = top_y + (i + 1) * spacing
 
-            # create explicit callback closures instead of lambda
             def make_p1_callback(value):
                 def callback():
                     self._toggle_player1(value)
@@ -354,7 +327,6 @@ class RaceSettingsScreen(MenuScreen):
         screen_w = surface.get_width()
         center_x = screen_w // 2
 
-        # Updated positions to match tighter layout
         col_offset = int(screen_w * 0.12)
         car_offset = int(screen_w * 0.16)
 
@@ -363,7 +335,6 @@ class RaceSettingsScreen(MenuScreen):
         p1_car_x = center_x - car_offset - col_offset
         p2_car_x = center_x + car_offset + col_offset
 
-        # Reduced from 0.22 to 0.17 for tighter spacing
         label_y = int(surface.get_height() * 0.22)
 
         labels = [
@@ -383,7 +354,6 @@ class RaceSettingsScreen(MenuScreen):
         """Draw all buttons with appropriate styling"""
         # Player type buttons
         for i, button in enumerate(self.player1_buttons):
-            # Safety: map index to available labels, defaulting to last label if index out of range
             label_choices = ["Human", "DQN"]
             label = label_choices[i] if i < len(label_choices) else label_choices[-1]
             is_selected = game_state_manager.player1_selection == label
@@ -483,7 +453,6 @@ class RaceSettingsScreen(MenuScreen):
         screen_w = surface.get_width()
         screen_h = surface.get_height()
 
-        # Better positioned - centered vertically and horizontally
         panel_y = int(screen_h * 0.5)
         left_x = int(screen_w * 0.12)
         right_x = int(screen_w * 0.88)
