@@ -37,6 +37,8 @@ class Trainer:
             'speed': 0.0,
             'edge': 0.0,
             'time': 0.0,
+            'checkpoint': 0.0,
+            'progress': 0.0,
             'obstacle': 0.0,
             'finish': 0.0,
             'collision': 0.0,
@@ -44,6 +46,9 @@ class Trainer:
             'total': 0.0
         }
         self.state = None
+        
+        # Checkpoint tracking
+        self.prev_checkpoint_distance = None
         
         # Timing
         self.start_time = None
@@ -60,7 +65,7 @@ class Trainer:
             return
             
         print("\n" + "="*80)
-        print("INITIALIZING TRAINING MODE")
+        print("INITIALIZING TRAINING MODE - CHECKPOINT ZONE SYSTEM")
         print("="*80)
         
         # Quit mixer for performance
@@ -91,7 +96,11 @@ class Trainer:
         self.fps_timer = time.time()
         
         print("\n" + "="*80)
-        print("Epsilon Decay: Step-based")
+        print("CHECKPOINT SYSTEM INFO:")
+        print(f"  Total checkpoints: {self.environment.checkpoint_manager.total_checkpoints}")
+        print(f"  AI can cross checkpoints ANYWHERE on the line")
+        print(f"  Edge rewards teach optimal racing lines")
+        print("\nEpsilon Decay: Step-based")
         print(f"  Start: {self.agent.epsilon:.4f}")
         print(f"  Min: {self.agent.epsilon_min}")
         print(f"  Decay rate: {self.agent.epsilon_decay} per step")
@@ -114,6 +123,11 @@ class Trainer:
         # Reset breakdown
         for key in self.episode_breakdown:
             self.episode_breakdown[key] = 0.0
+        
+        # Initialize checkpoint distance tracking
+        self.prev_checkpoint_distance = self.environment.checkpoint_manager.get_distance_to_checkpoint(
+            (self.environment.car.position.x, self.environment.car.position.y)
+        )
         
         self.state = self.environment.get_state()
     
@@ -143,17 +157,18 @@ class Trainer:
         
         # Calculate stats
         avg_loss = np.mean(self.losses) if self.losses else 0.0
+        checkpoints_crossed = self.environment.checkpoint_manager.checkpoints_crossed
+        total_checkpoints = self.environment.checkpoint_manager.total_checkpoints
         
         # Print episode summary
         print(f"Ep {self.agent.episode_count:4d} | {status:7s} | Steps: {self.steps:4d} | "
+              f"CP: {checkpoints_crossed:2d}/{total_checkpoints:2d} | "
               f"R: {self.episode_breakdown['total']:7.1f} | "
-              f"Spd: {self.episode_breakdown['speed']:+6.1f} | "
-              f"Edge: {self.episode_breakdown['edge']:+6.1f} | "
-              f"Obst: {self.episode_breakdown['obstacle']:+5.1f} | "
-              f"Fin: {self.episode_breakdown['finish']:+6.1f} | "
-              f"Col: {self.episode_breakdown['collision']:+6.1f} | "
-              f"Tout: {self.episode_breakdown['timeout']:+6.1f} | "
-              f"Loss: {avg_loss:.3f} | ε: {self.agent.epsilon:.3f} | "
+              f"CPR: {self.episode_breakdown['checkpoint']:+6.1f} | "
+              f"Prog: {self.episode_breakdown['progress']:+5.1f} | "
+              f"Spd: {self.episode_breakdown['speed']:+5.1f} | "
+              f"Edge: {self.episode_breakdown['edge']:+5.1f} | "
+              f"Loss: {avg_loss:.3f} | Îµ: {self.agent.epsilon:.3f} | "
               f"FPS: {self.current_fps:.0f}")
         
         # Milestone every 100 episodes
@@ -197,16 +212,23 @@ class Trainer:
             # Execute step
             next_state, step_info, done = self.environment.step(action)
             
-            # Calculate reward
-            reward_breakdown = calculate_reward(
+            # Calculate reward with checkpoint system
+            reward_breakdown, current_checkpoint_distance = calculate_reward(
                 self.environment, 
                 collision=step_info['collision'],
                 just_finished=step_info['finished'],
                 action=action, 
                 hit_obstacle=step_info['hit_obstacle'],
                 timeout=step_info['timeout'],
-                episode=self.agent.episode_count
+                episode=self.agent.episode_count,
+                checkpoint_crossed=step_info.get('checkpoint_crossed', False),
+                track_progress=step_info.get('track_progress', 0.0),
+                prev_checkpoint_distance=self.prev_checkpoint_distance
             )
+            
+            # Update checkpoint distance for next step
+            if current_checkpoint_distance is not None:
+                self.prev_checkpoint_distance = current_checkpoint_distance
             
             reward = reward_breakdown['total']
             
@@ -236,41 +258,11 @@ class Trainer:
             # Episode ended
             self._end_episode()
         
-        # Draw environment
-        self.environment.draw()
+        # Draw environment (can be commented out for faster training)
+        # self.environment.draw()
         
-        # Draw speed info (top right)
-        self._draw_speed_info()
-        
-        # Draw training overlay
+        # Draw training overlay (can be commented out for faster training)
         draw_reward_overlay(self.display, self.episode_breakdown, self.agent.episode_count)
-    
-    def _draw_speed_info(self):
-        """Draw speed percentage at top right (below time)"""
-        y_offset = 60  # Below the time display
-        
-        # Get speed ratio
-        speed_ratio = self.environment.car.velocity / self.environment.car.max_velocity
-        speed_text = f"Speed: {speed_ratio:.1%}"
-        
-        # Color based on speed
-        if speed_ratio > 0.7:
-            speed_color = GREEN
-        elif speed_ratio > 0.3:
-            speed_color = YELLOW
-        else:
-            speed_color = RED
-        
-        # Create shadowed text
-        from scripts.TrainingUtils import create_shadowed_text, font_scale
-        speed_font = font_scale(28, FONT)
-        speed_surface = create_shadowed_text(speed_text, speed_font, speed_color)
-        
-        # Position at top right
-        self.display.blit(
-            speed_surface, 
-            (WIDTH - speed_surface.get_width() - 20, y_offset)
-        )
     
     def _save_and_exit(self):
         """Save model and exit"""

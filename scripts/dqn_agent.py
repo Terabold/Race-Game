@@ -29,14 +29,13 @@ class DQNAgent:
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        # Hyperparameters - FIXED FOR STABILITY
-        self.gamma = 0.99
-        self.lr = 0.0001  # REDUCED from 0.0005 - prevents overfitting
-        self.batch_size = 64
+        self.gamma = 0.995  # Slightly increased (from 0.99) - values future rewards more
+        self.lr = 0.0003    # Slightly increased learning rate
+        self.batch_size = 128   # Larger batches for more stable learning
         
         # Epsilon with MINIMUM floor to maintain exploration
         self.epsilon = 1.0
-        self.epsilon_min = 0.05  # INCREASED from 0.01 - maintain 5% exploration
+        self.epsilon_min = 0.02  # Keep exploration even when trained
         self.epsilon_decay = 0.9995  # SLOWER decay - prevents premature convergence
         
         # Target network update frequency

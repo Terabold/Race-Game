@@ -2,8 +2,8 @@ import pygame
 from scripts.Constants import *
 from scripts.Car import Car
 from scripts.Obstacle import Obstacle
-from scripts.drawing import draw_finished, draw_failed, draw_ui, draw_countdown, draw_pause_overlay
-from scripts.utils import load_sound
+from scripts.utils import (draw_finished, draw_failed, draw_ui, 
+                         draw_countdown, draw_pause_overlay, load_sound)
 from pathlib import Path
 import math
 

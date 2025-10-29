@@ -26,6 +26,12 @@ GRAY = (128, 128, 128)
 YELLOW = (255, 255, 0)
 DARKGRAY = (20, 20, 20)
 ORANGE = (255, 165, 0)
+
+#checkpoint colors
+BRIGHT_GREEN = (0, 255, 0)
+DARK_GREEN = (0, 100, 0)  
+GRAY_COLOR = (100, 100, 100)
+
 # Car colors mapping
 CAR_COLORS = {
     "Red": r"data\photo\car-red.png",
@@ -79,6 +85,36 @@ DEFAULT_CLICK_VOLUME = 0.05
 MIN_FONT_SIZE = 12
 MAX_FONT_SIZE = 72
 BASE_IMG_PATH = 'data/images/'
+
+TRACK_CHECKPOINT_ZONES = [
+    [(260, 155), (440, 161)],  # Checkpoint 1
+    [(236, 142), (235, 39)],  # Checkpoint 2
+    [(216, 155), (24, 162)],  # Checkpoint 3
+    [(221, 509), (65, 567)],  # Checkpoint 4
+    [(678, 755), (684, 866)],  # Checkpoint 5
+    [(707, 741), (893, 734)],  # Checkpoint 6
+    [(807, 517), (908, 606)],  # Checkpoint 7
+    [(988, 483), (985, 586)],  # Checkpoint 8
+    [(1086, 613), (1227, 543)],  # Checkpoint 9
+    [(1091, 729), (1273, 736)],  # Checkpoint 10
+    [(1319, 755), (1326, 859)],  # Checkpoint 11
+    [(1364, 738), (1552, 734)],  # Checkpoint 12
+    [(1362, 466), (1554, 468)],  # Checkpoint 13
+    [(1360, 466), (1348, 357)],  # Checkpoint 14
+    [(891, 352), (891, 458)],  # Checkpoint 15
+    [(702, 350), (889, 350)],  # Checkpoint 16
+    [(886, 243), (891, 348)],  # Checkpoint 17
+    [(1348, 243), (1350, 343)],  # Checkpoint 18
+    [(1362, 239), (1552, 236)],  # Checkpoint 19
+    [(1360, 149), (1550, 147)],  # Checkpoint 20
+    [(1358, 147), (1352, 41)],  # Checkpoint 21
+    [(658, 147), (658, 38)],  # Checkpoint 22
+    [(461, 157), (649, 150)],  # Checkpoint 23
+    [(468, 393), (658, 389)],  # Checkpoint 24
+    [(457, 400), (456, 512)],  # Checkpoint 25
+    [(259, 400), (461, 400)],  # Checkpoint 26
+]
+
 
 # Obstacle spawn points on track
 TRACK_BONUS_POINTS = [

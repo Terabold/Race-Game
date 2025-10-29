@@ -3,6 +3,8 @@ from scripts.Constants import *
 from scripts.Car import Car
 from scripts.Obstacle import Obstacle
 from pathlib import Path
+from scripts.checkpoint import CheckpointManager
+from scripts.utils import font_scale, create_shadowed_text
 import math
 import random
 
@@ -22,6 +24,10 @@ class AIEnvironment:
         
         # Track
         self._setup_track()
+        
+        # Checkpoint system
+        self.checkpoint_manager = CheckpointManager(TRACK_CHECKPOINT_ZONES)
+        self.prev_position = (self.car.position.x, self.car.position.y)
         
         # Timers
         self.max_time = TARGET_TIME
@@ -62,6 +68,10 @@ class AIEnvironment:
         obstacle_generator = Obstacle(0, 0, ai_mode=True)
         obstacle_generator.reshuffle_obstacles(self.obstacle_group, self.num_obstacles, ai_mode=True)
         
+        # Reset checkpoint system
+        self.checkpoint_manager.reset()
+        self.prev_position = (self.car.position.x, self.car.position.y)
+        
         # Reset timers and state
         self.time_remaining = self.max_time
         self.episode_ended = False
@@ -95,7 +105,7 @@ class AIEnvironment:
         
         Returns:
             state: next state vector
-            step_info: dict with collision, finished, hit_obstacle, timeout flags
+            step_info: dict with collision, finished, hit_obstacle, timeout, checkpoint info
             done: whether episode ended
         """
         if self.episode_ended:
@@ -103,24 +113,44 @@ class AIEnvironment:
                 'collision': False,
                 'finished': False,
                 'hit_obstacle': False,
-                'timeout': False
+                'timeout': False,
+                'checkpoint_crossed': False,
+                'track_progress': 0.0
             }, True
         
         # Store pre-action state
         pre_velocity = self.car.velocity
+        prev_pos = self.prev_position
         
         # Execute action
         self._handle_car_movement(action)
         
+        # Get current position after movement
+        current_pos = (self.car.position.x, self.car.position.y)
+        
+        # Check checkpoint crossing FIRST
+        crossed, progress, backward_crossed = self.checkpoint_manager.check_crossing(prev_pos, current_pos)
+
+        
+        # Update previous position
+        self.prev_position = current_pos
+        
         # Initialize step info
+        crossed, progress, backward_crossed = self.checkpoint_manager.check_crossing(prev_pos, current_pos)
+
         step_info = {
             'collision': False,
             'finished': False,
             'hit_obstacle': False,
-            'timeout': False
+            'timeout': False,
+            'checkpoint_crossed': crossed,
+            'backward_crossed': backward_crossed,  # ✅ new field
+            'track_progress': progress
         }
+
+
         
-        # Check obstacle FIRST (before other checks)
+        # Check obstacle (before other checks)
         step_info['hit_obstacle'] = self._check_obstacle(pre_velocity)
         
         # Check finish line (must check BEFORE collision)
@@ -231,6 +261,9 @@ class AIEnvironment:
         # Draw obstacles
         self.obstacle_group.draw(self.surface)
         
+        # Draw checkpoint zones
+        self._draw_checkpoint_zones()
+        
         # Draw rays
         if not self.car_finished and not self.car_crashed:
             self.car.draw_rays(self.surface)
@@ -243,7 +276,41 @@ class AIEnvironment:
         
         # Draw time remaining
         self._draw_time_remaining()
-    
+
+    def _draw_checkpoint_zones(self):
+        """Draw checkpoint zones during training"""
+        # Draw all checkpoint zones
+        for idx, zone in enumerate(self.checkpoint_manager.zones):
+            p1, p2 = zone[0], zone[1]
+            
+            if idx == self.checkpoint_manager.current_checkpoint_idx:
+                # Current checkpoint - bright green
+                color = (0, 255, 0)
+                width = 4
+            elif idx < self.checkpoint_manager.current_checkpoint_idx:
+                # Crossed checkpoints - gray
+                color = (100, 100, 100)
+                width = 2
+            else:
+                # Future checkpoints - dark green
+                color = (0, 100, 0)
+                width = 2
+            
+            # Draw line
+            pygame.draw.line(self.surface, color, p1, p2, width)
+            
+            # Draw endpoints
+            pygame.draw.circle(self.surface, color, p1, 5)
+            pygame.draw.circle(self.surface, color, p2, 5)
+            
+            # Draw checkpoint number at center (optional - can be removed for performance)
+            if idx <= self.checkpoint_manager.current_checkpoint_idx + 2:
+                center_x = (p1[0] + p2[0]) // 2
+                center_y = (p1[1] + p2[1]) // 2
+                font = pygame.font.Font(None, 20)
+                text = font.render(str(idx + 1), True, (255, 255, 255))
+                self.surface.blit(text, (center_x - 6, center_y - 10))
+
     def _draw_time_remaining(self):
         """Draw the time remaining display"""
         time_color = GREEN if self.time_remaining > 10 else (
@@ -251,9 +318,14 @@ class AIEnvironment:
         )
         
         time_text = f"Time: {self.time_remaining:.1f}s"
-        text_surface = self.font.render(time_text, True, time_color)
+        text_surface = font_scale(32).render(time_text, True, time_color)
         
         # Add shadow for better visibility
-        shadow_surface = self.font.render(time_text, True, BLACK)
+        shadow_surface = font_scale(32).render(time_text, True, BLACK)
         self.surface.blit(shadow_surface, (17, 17))
         self.surface.blit(text_surface, (15, 15))
+        
+        # Draw checkpoint progress
+        checkpoint_text = f"Checkpoint: {self.checkpoint_manager.checkpoints_crossed}/{self.checkpoint_manager.total_checkpoints}"
+        checkpoint_surface = create_shadowed_text(checkpoint_text, font_scale(32), WHITE)
+        self.surface.blit(checkpoint_surface, (15, 55))
