@@ -1,331 +1,267 @@
+# AIEnvironment.py - COMPLETE FIXED VERSION
 import pygame
+import math
 from scripts.Constants import *
 from scripts.Car import Car
 from scripts.Obstacle import Obstacle
-from pathlib import Path
 from scripts.checkpoint import CheckpointManager
-from scripts.utils import font_scale, create_shadowed_text
-import math
-import random
+
+# ----------------------------------------------------------------------
+#  UI STYLE
+# ----------------------------------------------------------------------
+UI_FONT_SIZE      = 22
+UI_DEBUG_SIZE     = 18
+UI_COLOR          = (255, 255, 255)
+SHADOW_COLOR      = (0, 0, 0)
+LINE_HEIGHT       = 26
+DEBUG_LINE_HEIGHT = 20
+MARGIN_X          = 15
+MARGIN_Y_TOP      = 10
+MARGIN_Y_BOTTOM   = 10
+
 
 class AIEnvironment:
-    """Optimized environment specifically for AI training"""
     def __init__(self, surface):
         self.surface = surface
-        
-        # Single car for training
-        start_x, start_y = CAR_START_POS
-        self.car = Car(start_x, start_y, "Red")
-        
+
+        # Car
+        self.car = Car(*CAR_START_POS, "Red")
+
         # Obstacles
         self.num_obstacles = 15
         self.obstacle_group = pygame.sprite.Group()
         self._generate_obstacles()
-        
+
         # Track
         self._setup_track()
-        
-        # Checkpoint system
-        self.checkpoint_manager = CheckpointManager(TRACK_CHECKPOINT_ZONES)
-        self.prev_position = (self.car.position.x, self.car.position.y)
-        
-        # Timers
+
+        # Checkpoint manager
+        self.checkpoint_manager = CheckpointManager()
+
+        # Time
         self.max_time = TARGET_TIME
         self.time_remaining = self.max_time
-        
+
         # Episode state
         self.episode_ended = False
         self.car_finished = False
         self.car_crashed = False
         self.car_timeout = False
-        
-        # Font for time display
-        self.font = pygame.font.Font(FONT, 32)
-        
+
+    # ==============================================================
+    #  SETUP
+    # ==============================================================
     def _setup_track(self):
         self.track_border = pygame.image.load(TRACK_BORDER).convert_alpha()
         self.track_border_mask = pygame.mask.from_surface(self.track_border)
-        
+
         self.finish_line = pygame.transform.scale(
             pygame.image.load(FINISHLINE).convert_alpha(),
             FINISHLINE_SIZE
         )
         self.finish_line_position = FINISHLINE_POS
         self.finish_mask = pygame.mask.from_surface(self.finish_line)
-    
+
     def _generate_obstacles(self):
         obstacle_generator = Obstacle(0, 0, ai_mode=True)
         self.obstacle_group.add(
             obstacle_generator.generate_obstacles(self.num_obstacles, ai_mode=True)
         )
-    
+
+    # ==============================================================
+    #  RESET
+    # ==============================================================
     def reset(self):
-        """Reset environment for new episode"""
-        start_x, start_y = CAR_START_POS
-        self.car.reset(start_x, start_y)
-        
-        # Reset obstacles
+        self.car.reset(*CAR_START_POS)
+
+        # Reshuffle obstacles
         obstacle_generator = Obstacle(0, 0, ai_mode=True)
         obstacle_generator.reshuffle_obstacles(self.obstacle_group, self.num_obstacles, ai_mode=True)
-        
-        # Reset checkpoint system
+
         self.checkpoint_manager.reset()
-        self.prev_position = (self.car.position.x, self.car.position.y)
-        
-        # Reset timers and state
+
         self.time_remaining = self.max_time
         self.episode_ended = False
         self.car_finished = False
         self.car_crashed = False
         self.car_timeout = False
-    
+
+    # ==============================================================
+    #  STATE - SIMPLIFIED (NO CHECKPOINT INFO)
+    # ==============================================================
     def get_state(self):
-        """Get current state vector for AI"""
-        # Cast rays
+        """
+        Simplified state: Only rays, velocity, and car orientation
+        Total: 20 values (17 rays + 1 velocity + 2 orientation)
+        """
         self.car.cast_rays(self.track_border_mask, self.obstacle_group)
-        
-        # Normalize ray distances (11 rays)
-        normalized_rays = [dist / self.car.ray_length for dist in self.car.ray_distances]
-        
-        # Build state vector: 11 rays + 1 velocity + 2 angle + 2 position = 16 total
-        state = [
-            *normalized_rays,                           # 11 values
-            self.car.velocity / self.car.max_velocity,  # 1 value
-            math.cos(math.radians(self.car.angle)),     # 1 value
-            math.sin(math.radians(self.car.angle)),     # 1 value
-            self.car.position.x / WIDTH,                # 1 value
-            self.car.position.y / HEIGHT                # 1 value
+
+        # 1. Rays – normalized
+        normalized_rays = [d / self.car.ray_length for d in self.car.ray_distances]
+
+        # 2. Velocity
+        norm_vel = max(0.0, self.car.velocity / self.car.max_velocity)
+
+        # 3. Car orientation (sin/cos to avoid 0/360 discontinuity)
+        angle_rad = math.radians(self.car.angle)
+        angle_sin = math.sin(angle_rad)
+        angle_cos = math.cos(angle_rad)
+
+        return [
+            *normalized_rays,   # 0–16 (17 values)
+            norm_vel,           # 17
+            angle_sin,          # 18 (orientation Y component)
+            angle_cos,          # 19 (orientation X component)
         ]
-        
-        return state
-    
+
+    # ==============================================================
+    #  STEP
+    # ==============================================================
     def step(self, action):
-        """
-        Execute one step with the given action.
-        
-        Returns:
-            state: next state vector
-            step_info: dict with collision, finished, hit_obstacle, timeout, checkpoint info
-            done: whether episode ended
-        """
         if self.episode_ended:
             return self.get_state(), {
-                'collision': False,
-                'finished': False,
-                'hit_obstacle': False,
-                'timeout': False,
-                'checkpoint_crossed': False,
-                'track_progress': 0.0
+                'collision': False, 'finished': False, 'hit_obstacle': False,
+                'timeout': False, 'checkpoint_crossed': False, 'backward_crossed': False
             }, True
-        
-        # Store pre-action state
-        pre_velocity = self.car.velocity
-        prev_pos = self.prev_position
-        
-        # Execute action
-        self._handle_car_movement(action)
-        
-        # Get current position after movement
-        current_pos = (self.car.position.x, self.car.position.y)
-        
-        # Check checkpoint crossing FIRST
-        crossed, progress, backward_crossed = self.checkpoint_manager.check_crossing(prev_pos, current_pos)
 
-        
-        # Update previous position
-        self.prev_position = current_pos
-        
-        # Initialize step info
-        crossed, progress, backward_crossed = self.checkpoint_manager.check_crossing(prev_pos, current_pos)
+        pre_velocity = self.car.velocity
+        self._handle_car_movement(action)
+
+        car_pos = (self.car.position.x, self.car.position.y)
+        crossed, backward = self.checkpoint_manager.check_crossing(car_pos)
 
         step_info = {
-            'collision': False,
-            'finished': False,
-            'hit_obstacle': False,
-            'timeout': False,
-            'checkpoint_crossed': crossed,
-            'backward_crossed': backward_crossed,  # ✅ new field
-            'track_progress': progress
+            'collision': False, 'finished': False, 'hit_obstacle': False,
+            'timeout': False, 'checkpoint_crossed': crossed, 'backward_crossed': backward
         }
 
-
-        
-        # Check obstacle (before other checks)
         step_info['hit_obstacle'] = self._check_obstacle(pre_velocity)
-        
-        # Check finish line (must check BEFORE collision)
         step_info['finished'] = self._check_finish()
-        
-        # Check collision
         step_info['collision'] = self._check_collision()
-        
-        # Update timer and check timeout
+
         self.time_remaining = max(0, self.time_remaining - 1/FPS)
         if self.time_remaining <= 0 and not self.car_finished and not self.car_crashed:
             self.car.can_move = False
             self.car_timeout = True
             step_info['timeout'] = True
             self.episode_ended = True
-        
-        # Check if episode ended
+
         done = self.episode_ended
-        
-        # Get next state
         next_state = self.get_state()
-        
         return next_state, step_info, done
-    
+
+    # ------------------------------------------------------------------
+    #  MOVEMENT & COLLISIONS
+    # ------------------------------------------------------------------
     def _handle_car_movement(self, action):
-        """Execute the action on the car"""
-        if action is None:
-            return
-        
+        if action is None: return
         moving = action in [1, 2, 5, 6, 7, 8]
-        
-        if action in [3, 5, 7]:
-            self.car.rotate(left=True)
-        elif action in [4, 6, 8]:
-            self.car.rotate(right=True)
-        
-        if action in [1, 5, 6]:
-            self.car.accelerate(True)
-        elif action in [2, 7, 8]:
-            self.car.accelerate(False)
-        
-        if not moving:
-            self.car.reduce_speed()
-    
+        if action in [3, 5, 7]: self.car.rotate(left=True)
+        elif action in [4, 6, 8]: self.car.rotate(right=True)
+        if action in [1, 5, 6]: self.car.accelerate(True)
+        elif action in [2, 7, 8]: self.car.accelerate(False)
+        if not moving: self.car.reduce_speed()
+
     def _check_obstacle(self, pre_velocity):
-        """Check if car hit obstacle and apply velocity reduction"""
         for obstacle in self.obstacle_group.sprites():
             if pygame.sprite.collide_mask(self.car, obstacle):
                 self.car.velocity *= 0.25
                 obstacle.kill()
-                # Return True only if velocity was significant before hit
                 return pre_velocity > 1.0
         return False
-    
+
     def _check_finish(self):
-        """Check if car crossed finish line"""
-        if self.car_finished or self.car_crashed:
-            return False
-        
-        car_offset = (
+        if self.car_finished or self.car_crashed: return False
+        offset = (
             int(self.car.rect.left - self.finish_line_position[0]),
             int(self.car.rect.top - self.finish_line_position[1])
         )
-        
-        if finish_overlap := self.finish_mask.overlap(self.car.mask, car_offset):
-            # Bottom edge of finish line (y > 2) = successful finish
-            if finish_overlap[1] > 2:
+        if overlap := self.finish_mask.overlap(self.car.mask, offset):
+            if overlap[1] > 2:
                 self.car_finished = True
                 self.episode_ended = True
                 return True
-        
         return False
-    
+
     def _check_collision(self):
-        """Check if car crashed into wall"""
-        if self.car_crashed:
-            return False
-        
+        if self.car_crashed: return False
         offset = (int(self.car.rect.left), int(self.car.rect.top))
         finish_offset = (
             int(self.car.rect.left - self.finish_line_position[0]),
             int(self.car.rect.top - self.finish_line_position[1])
         )
-        
-        # Check track border collision
         if self.track_border_mask.overlap(self.car.mask, offset):
             self.car.failed = True
             self.car.can_move = False
             self.car_crashed = True
             self.episode_ended = True
             return True
-        
-        # Check top edge of finish line (y <= 2) = collision
-        if finish_overlap := self.finish_mask.overlap(self.car.mask, finish_offset):
-            if finish_overlap[1] <= 2:
+        if overlap := self.finish_mask.overlap(self.car.mask, finish_offset):
+            if overlap[1] <= 2:
                 self.car.failed = True
                 self.car.can_move = False
                 self.car_crashed = True
                 self.episode_ended = True
                 return True
-        
         return False
-    
+
+    # ==============================================================
+    #  DRAW
+    # ==============================================================
+    def _draw_text(self, text: str, pos: tuple, color=UI_COLOR, size=UI_FONT_SIZE):
+        font = pygame.font.Font(None, size)
+        shadow = font.render(text, True, SHADOW_COLOR)
+        main   = font.render(text, True, color)
+        self.surface.blit(shadow, (pos[0]+1, pos[1]+1))
+        self.surface.blit(main,   pos)
+
     def draw(self):
-        """Draw environment (minimal for performance)"""
         self.surface.fill((0, 0, 0))
-        
-        # Draw obstacles
         self.obstacle_group.draw(self.surface)
-        
-        # Draw checkpoint zones
-        self._draw_checkpoint_zones()
-        
-        # Draw rays
+        self.checkpoint_manager.draw(self.surface)
+
         if not self.car_finished and not self.car_crashed:
             self.car.draw_rays(self.surface)
-        
-        # Draw track border
+
         self.surface.blit(self.track_border, (0, 0))
-        
-        # Draw car
         self.surface.blit(self.car.image, self.car.rect)
-        
-        # Draw time remaining
-        self._draw_time_remaining()
+        self.surface.blit(self.finish_line, self.finish_line_position)
 
-    def _draw_checkpoint_zones(self):
-        """Draw checkpoint zones during training"""
-        # Draw all checkpoint zones
-        for idx, zone in enumerate(self.checkpoint_manager.zones):
-            p1, p2 = zone[0], zone[1]
-            
-            if idx == self.checkpoint_manager.current_checkpoint_idx:
-                # Current checkpoint - bright green
-                color = (0, 255, 0)
-                width = 4
-            elif idx < self.checkpoint_manager.current_checkpoint_idx:
-                # Crossed checkpoints - gray
-                color = (100, 100, 100)
-                width = 2
-            else:
-                # Future checkpoints - dark green
-                color = (0, 100, 0)
-                width = 2
-            
-            # Draw line
-            pygame.draw.line(self.surface, color, p1, p2, width)
-            
-            # Draw endpoints
-            pygame.draw.circle(self.surface, color, p1, 5)
-            pygame.draw.circle(self.surface, color, p2, 5)
-            
-            # Draw checkpoint number at center (optional - can be removed for performance)
-            if idx <= self.checkpoint_manager.current_checkpoint_idx + 2:
-                center_x = (p1[0] + p2[0]) // 2
-                center_y = (p1[1] + p2[1]) // 2
-                font = pygame.font.Font(None, 20)
-                text = font.render(str(idx + 1), True, (255, 255, 255))
-                self.surface.blit(text, (center_x - 6, center_y - 10))
+        # --- UI: Top-left ---
+        x, y = MARGIN_X, MARGIN_Y_TOP
+        time_color = GREEN if self.time_remaining > 10 else (YELLOW if self.time_remaining > 3 else RED)
+        self._draw_text(f"Time: {self.time_remaining:.1f}s", (x, y), time_color)
+        y += LINE_HEIGHT
+        
+        # Show checkpoint progress
+        total_checkpoints = self.checkpoint_manager.total_checkpoints
+        current_progress = self.checkpoint_manager.crossed_count
+        if self.car_finished:
+            current_progress = total_checkpoints
+        
+        self._draw_text(f"CP: {current_progress}/{total_checkpoints}", (x, y))
+        y += LINE_HEIGHT
+        
+        speed_ratio = self.car.velocity / self.car.max_velocity if self.car.max_velocity > 0 else 0
+        speed_color = GREEN if speed_ratio > 0.7 else (YELLOW if speed_ratio > 0.3 else RED)
+        self._draw_text(f"Speed: {speed_ratio:.1%}", (x, y), speed_color)
 
-    def _draw_time_remaining(self):
-        """Draw the time remaining display"""
-        time_color = GREEN if self.time_remaining > 10 else (
-            YELLOW if self.time_remaining > 3 else RED
-        )
+        # --- DEBUG: Bottom-left ---
+        state = self.get_state()
+        y_debug = self.surface.get_height() - MARGIN_Y_BOTTOM - (4 * DEBUG_LINE_HEIGHT)
         
-        time_text = f"Time: {self.time_remaining:.1f}s"
-        text_surface = font_scale(32).render(time_text, True, time_color)
+        # Show first few rays only (to save space)
+        ray_preview = " ".join(f"{r:.2f}" for r in state[:17]) + "..."
+        self._draw_text(f"Rays[0-4]: {ray_preview}", (MARGIN_X, y_debug), size=UI_DEBUG_SIZE)
+        y_debug += DEBUG_LINE_HEIGHT
         
-        # Add shadow for better visibility
-        shadow_surface = font_scale(32).render(time_text, True, BLACK)
-        self.surface.blit(shadow_surface, (17, 17))
-        self.surface.blit(text_surface, (15, 15))
+        self._draw_text(f"Vel: {state[17]:.2f}", (MARGIN_X, y_debug), size=UI_DEBUG_SIZE)
+        y_debug += DEBUG_LINE_HEIGHT
         
-        # Draw checkpoint progress
-        checkpoint_text = f"Checkpoint: {self.checkpoint_manager.checkpoints_crossed}/{self.checkpoint_manager.total_checkpoints}"
-        checkpoint_surface = create_shadowed_text(checkpoint_text, font_scale(32), WHITE)
-        self.surface.blit(checkpoint_surface, (15, 55))
+        self._draw_text(f"Angle: sin={state[18]:.2f} cos={state[19]:.2f}", (MARGIN_X, y_debug), size=UI_DEBUG_SIZE)
+        y_debug += DEBUG_LINE_HEIGHT
+        
+        # Show min/max rays for situational awareness
+        min_ray = min(state[:17]) if state[:17] else 0
+        max_ray = max(state[:17]) if state[:17] else 0
+        self._draw_text(f"Ray range: [{min_ray:.2f}, {max_ray:.2f}]", (MARGIN_X, y_debug), size=UI_DEBUG_SIZE)

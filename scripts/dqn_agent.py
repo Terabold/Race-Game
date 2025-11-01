@@ -10,7 +10,7 @@ from scripts.replaybuffer import ReplayBuffer, replaybuffer_from_dict
 
 class DQNAgent:
     """
-    DQN Agent with fixes for catastrophic forgetting
+    DQN Agent with improved hyperparameters for consistency
     """
 
     def __init__(self, state_dim, action_dim, device=None):
@@ -29,26 +29,29 @@ class DQNAgent:
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        self.gamma = 0.995  # Slightly increased (from 0.99) - values future rewards more
-        self.lr = 0.0003    # Slightly increased learning rate
-        self.batch_size = 128   # Larger batches for more stable learning
+        # IMPROVED HYPERPARAMETERS
+        self.gamma = 0.995
+        self.lr = 0.0001  # Lower learning rate for more stable learning
+        self.batch_size = 64  # Smaller batches for more frequent updates
         
-        # Epsilon with MINIMUM floor to maintain exploration
+        # IMPROVED EPSILON SCHEDULE
         self.epsilon = 1.0
-        self.epsilon_min = 0.02  # Keep exploration even when trained
-        self.epsilon_decay = 0.9995  # SLOWER decay - prevents premature convergence
+        self.epsilon_min = 0.05  # HIGHER minimum - maintains exploration
+        self.epsilon_decay = 0.99985  # SLOWER decay
         
-        # Target network update frequency
-        self.target_update = 100  # INCREASED from 10 - more stable learning
+        # Target network update
+        self.target_update = 100  # Even more stable
         
         # Episode tracking
         self.episode_count = 0
 
-        # Replay buffer and optimizer
-        self.replay_buffer = ReplayBuffer(capacity=100000)  # INCREASED capacity
+        # Replay buffer
+        self.replay_buffer = ReplayBuffer(capacity=100000)
+        
+        # Optimizer with gradient clipping
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.lr)
         
-        # Add learning rate scheduler for stability
+        # Learning rate scheduler - more aggressive reduction on plateau
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, 
             mode='max',  # Monitor rewards (maximize)
@@ -63,10 +66,12 @@ class DQNAgent:
         os.makedirs(self.model_dir, exist_ok=True)
         self.model_path = os.path.join(self.model_dir, "model.pt")
         
-        # Performance tracking for early stopping
+        # Performance tracking
         self.best_reward = -float('inf')
+        self.best_checkpoints = 0
         self.episodes_without_improvement = 0
         self.recent_rewards = []
+        self.recent_checkpoints = []
 
     def get_action(self, state, training=True):
         """
@@ -74,6 +79,7 @@ class DQNAgent:
         """
         if state is None:
             return 0
+        
         if training and random.random() < self.epsilon:
             # Exploration
             return random.randint(0, self.action_dim - 1)
@@ -88,7 +94,7 @@ class DQNAgent:
         """
         Update the policy network using a batch from replay buffer
         """
-        if len(self.replay_buffer) < self.batch_size * 2:  # Wait for more samples
+        if len(self.replay_buffer) < self.batch_size * 4:  # Wait for enough samples
             return None
 
         # Sample batch
@@ -105,7 +111,9 @@ class DQNAgent:
 
         # Double DQN target
         with torch.no_grad():
+            # Select best actions using policy network
             best_actions = self.policy_net(next_states).max(1)[1].unsqueeze(1)
+            # Evaluate using target network
             next_q_values = self.target_net(next_states).gather(1, best_actions).squeeze(1)
             target_q_values = rewards + (1 - dones) * self.gamma * next_q_values
 
@@ -118,17 +126,17 @@ class DQNAgent:
         torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0)
         self.optimizer.step()
 
-        # Update target net LESS frequently for stability
+        # Update target network
         self.train_step += 1
         if self.train_step % self.target_update == 0:
             self.target_net.load_state_dict(self.policy_net.state_dict())
 
-        # Decay epsilon per step (SLOWER)
+        # Decay epsilon
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
         return loss.item()
 
-    def end_episode(self, episode_reward=0):
+    def end_episode(self, episode_reward=0, checkpoints_reached=0):
         """
         Called when an episode ends
         """
@@ -136,22 +144,18 @@ class DQNAgent:
         
         # Track recent performance
         self.recent_rewards.append(episode_reward)
+        self.recent_checkpoints.append(checkpoints_reached)
+        
         if len(self.recent_rewards) > 100:
             self.recent_rewards.pop(0)
+            self.recent_checkpoints.pop(0)
         
         # Update learning rate based on performance
         if len(self.recent_rewards) >= 100:
             avg_reward = np.mean(self.recent_rewards)
-            self.scheduler.step(avg_reward)
+            avg_checkpoints = np.mean(self.recent_checkpoints)
             
-            # Track best performance
-            if avg_reward > self.best_reward:
-                self.best_reward = avg_reward
-                self.episodes_without_improvement = 0
-                # Save best model
-                self.save_model(self.model_path.replace('.pt', '_best.pt'))
-            else:
-                self.episodes_without_improvement += 1
+            self.scheduler.step(avg_reward)
         
         return self.epsilon
 
@@ -170,7 +174,9 @@ class DQNAgent:
             'train_step': self.train_step,
             'episode_count': self.episode_count,
             'best_reward': self.best_reward,
+            'best_checkpoints': self.best_checkpoints,
             'recent_rewards': self.recent_rewards,
+            'recent_checkpoints': self.recent_checkpoints,
             'replay_buffer': self.replay_buffer.to_dict(),
         }
         tmp = save_path + '.tmp'
@@ -203,11 +209,11 @@ class DQNAgent:
             self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
 
         if 'epsilon' in checkpoint:
-            # IMPORTANT: Reset epsilon if it's too low
             loaded_epsilon = checkpoint['epsilon']
+            # Don't reset epsilon if it's reasonable
             if loaded_epsilon < 0.05:
-                print(f"WARNING: Loaded epsilon {loaded_epsilon:.4f} is too low!")
-                print(f"Resetting to {self.epsilon_min:.4f} to restore exploration")
+                print(f"WARNING: Loaded epsilon {loaded_epsilon:.4f} is very low!")
+                print(f"Resetting to {self.epsilon_min:.4f}")
                 self.epsilon = self.epsilon_min
             else:
                 self.epsilon = loaded_epsilon
@@ -221,12 +227,22 @@ class DQNAgent:
         if 'best_reward' in checkpoint:
             self.best_reward = checkpoint['best_reward']
         
+        if 'best_checkpoints' in checkpoint:
+            self.best_checkpoints = checkpoint['best_checkpoints']
+        
         if 'recent_rewards' in checkpoint:
             self.recent_rewards = checkpoint['recent_rewards']
+            
+        if 'recent_checkpoints' in checkpoint:
+            self.recent_checkpoints = checkpoint['recent_checkpoints']
 
         if 'replay_buffer' in checkpoint and checkpoint['replay_buffer']:
             self.replay_buffer = replaybuffer_from_dict(checkpoint['replay_buffer'])
 
         print(f"Loaded: ε={self.epsilon:.4f}, step={self.train_step}, ep={self.episode_count}, buffer={len(self.replay_buffer)}")
-        print(f"Best reward: {self.best_reward:.1f}, Recent avg: {np.mean(self.recent_rewards) if self.recent_rewards else 0:.1f}")
+        print(f"Best checkpoints: {self.best_checkpoints:.1f}/46")
+        if self.recent_rewards:
+            print(f"Recent avg reward: {np.mean(self.recent_rewards):.1f}")
+        if self.recent_checkpoints:
+            print(f"Recent avg checkpoints: {np.mean(self.recent_checkpoints):.1f}/46")
         return True

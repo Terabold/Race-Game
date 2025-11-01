@@ -6,7 +6,7 @@ from scripts.dqn_agent import DQNAgent
 from scripts.GameManager import game_state_manager
 import os
 
-STATE_DIM = 16
+STATE_DIM = 22
 ACTION_DIM = 8
 
 class Game:

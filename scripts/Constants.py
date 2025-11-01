@@ -43,8 +43,8 @@ CAR_COLORS = {
 
 # Game settings
 CAR_START_POS = (350, 225)
-FINISHLINE_POS = np.array([250, 250])
-FINISHLINE_SIZE = (180, 25)
+FINISHLINE_POS = np.array([268, 250])
+FINISHLINE_SIZE = (162, 25)
 TARGET_TIME = 25.0
 
 # Physics constants
@@ -54,6 +54,7 @@ ACCELERATION = 0.12
 
 # Asset paths
 TRACK_BORDER = r"data\photo\track1-border.png"
+TRACK_BORDER_TRAIN = r"data\photo\track1-border-train.png"
 TRACK = r"data\photo\trackv2.png"
 BOMB = r'data\photo\bomb.png'
 FINISHLINE = r'data\photo/finish.png'
@@ -87,37 +88,26 @@ MAX_FONT_SIZE = 72
 BASE_IMG_PATH = 'data/images/'
 
 TRACK_CHECKPOINT_ZONES = [
-    [(260, 155), (440, 161)],  # Checkpoint 1
-    [(236, 142), (235, 39)],  # Checkpoint 2
-    [(216, 155), (24, 162)],  # Checkpoint 3
-    [(221, 509), (65, 567)],  # Checkpoint 4
-    [(678, 755), (684, 866)],  # Checkpoint 5
-    [(707, 741), (893, 734)],  # Checkpoint 6
-    [(807, 517), (908, 606)],  # Checkpoint 7
-    [(988, 483), (985, 586)],  # Checkpoint 8
-    [(1086, 613), (1227, 543)],  # Checkpoint 9
-    [(1091, 729), (1273, 736)],  # Checkpoint 10
-    [(1319, 755), (1326, 859)],  # Checkpoint 11
-    [(1364, 738), (1552, 734)],  # Checkpoint 12
-    [(1362, 466), (1554, 468)],  # Checkpoint 13
-    [(1360, 466), (1348, 357)],  # Checkpoint 14
-    [(891, 352), (891, 458)],  # Checkpoint 15
-    [(702, 350), (889, 350)],  # Checkpoint 16
-    [(886, 243), (891, 348)],  # Checkpoint 17
-    [(1348, 243), (1350, 343)],  # Checkpoint 18
-    [(1362, 239), (1552, 236)],  # Checkpoint 19
-    [(1360, 149), (1550, 147)],  # Checkpoint 20
-    [(1358, 147), (1352, 41)],  # Checkpoint 21
-    [(658, 147), (658, 38)],  # Checkpoint 22
-    [(461, 157), (649, 150)],  # Checkpoint 23
-    [(468, 393), (658, 389)],  # Checkpoint 24
-    [(457, 400), (456, 512)],  # Checkpoint 25
-    [(259, 400), (461, 400)],  # Checkpoint 26
+    [(236, 134), (236, 43)],  # CP 1 | ΔN/Apx
+    [(204, 172), (41, 179)],  # CP 2 | Δ143px
+    [(239, 536), (159, 616)],  # CP 3 | Δ407px
+    [(722, 737), (885, 736)],  # CP 4 | Δ625px
+    [(1002, 487), (1000, 580)],  # CP 5 | Δ284px
+    [(1105, 682), (1267, 688)],  # CP 6 | Δ239px
+    [(1331, 767), (1332, 857)],  # CP 7 | Δ193px
+    [(1380, 679), (1543, 675)],  # CP 8 | Δ187px
+    [(1283, 361), (1284, 451)],  # CP 9 | Δ325px
+    [(877, 348), (716, 348)],  # CP 10 | Δ491px
+    [(933, 247), (924, 337)],  # CP 11 | Δ143px
+    [(1380, 203), (1541, 202)],  # CP 12 | Δ539px
+    [(1295, 133), (1301, 45)],  # CP 13 | Δ198px
+    [(476, 196), (636, 191)],  # CP 14 | Δ750px
+    [(452, 410), (453, 503)],  # CP 15 | Δ283px
+    [(270, 373), (431, 374)],  # CP 16 | Δ132px
 ]
 
-
 # Obstacle spawn points on track
-TRACK_BONUS_POINTS = [
+BOMB_LIST = [
     (296, 119), (359, 120), (340, 93), (278, 78), (245, 64), (226, 103),
     (172, 82), (149, 133), (99, 140), (67, 153), (135, 197), (176, 190),
     (107, 249), (65, 266), (102, 238), (164, 300), (144, 329), (77, 326),

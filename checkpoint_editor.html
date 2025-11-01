@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Checkpoint Editor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    * { box-sizing: border-box; margin:0; padding:0; }
+    html,body { height:100%; overflow:hidden; background:#222; font-family:Segoe UI,Arial,sans-serif; }
+    .app { display:flex; height:100%; }
+    .sidebar {
+        width:360px; background:#2d3436; color:#ddd; padding:20px;
+        overflow-y:auto; flex-shrink:0;
+    }
+    .canvas-area {
+        flex:1; background:#ddd; position:relative; overflow:hidden;
+    }
+    #trackCanvas { display:block; transform-origin:0 0; cursor:grab; }
+    .btn {
+        width:100%; padding:10px; margin:5px 0; border:none; border-radius:6px;
+        font-weight:bold; cursor:pointer;
+    }
+    .btn-primary { background:#667eea; color:#fff; }
+    .btn-success { background:#00b894; color:#fff; }
+    .btn-danger  { background:#ff7675; color:#fff; }
+    .btn-warning { background:#fdcb6e; color:#2d3436; }
+    .checkpoint-list { margin-top:20px; }
+    .checkpoint-item {
+        background:#34495e; padding:10px; margin:5px 0;
+        border-left:4px solid #667eea; display:flex;
+        justify-content:space-between; align-items:center;
+        font-size:0.95rem;
+    }
+    .btn-small {
+        padding:4px 8px; font-size:11px; margin-left:3px;
+        border:none; border-radius:4px; cursor:pointer;
+    }
+    .status { margin:15px 0; line-height:1.5; }
+    textarea { width:100%; height:150px; margin-top:5px; background:#222; color:#0f0; }
+</style>
+</head>
+<body>
+<div class="app">
+    <div class="sidebar">
+        <h2>Checkpoint Editor</h2>
+
+        <label class="btn btn-primary">
+            Load Track Image
+            <input type="file" id="imageUpload" accept="image/*" style="display:none;">
+        </label>
+
+        <div class="controls">
+            <button class="btn btn-danger" onclick="clearCurrent()">Clear Current</button>
+            <button class="btn btn-warning" onclick="clearAll()">Clear All</button>
+        </div>
+
+        <div class="status">
+            <strong>Status:</strong> <span id="statusText">Load an image</span><br>
+            <strong>Checkpoints:</strong> <span id="checkpointCount">0</span>
+        </div>
+
+        <h3>Checkpoints</h3>
+        <div class="checkpoint-list" id="checkpointList"></div>
+
+        <h3>Export Python Code</h3>
+        <button class="btn btn-primary" onclick="exportCode()">Copy to Clipboard</button>
+        <textarea id="codeOutput" readonly></textarea>
+    </div>
+
+    <div class="canvas-area" id="canvasContainer">
+        <canvas id="trackCanvas"></canvas>
+    </div>
+</div>
+
+<script>
+/* ---------- GLOBALS ---------- */
+const canvas = document.getElementById('trackCanvas');
+const ctx = canvas.getContext('2d');
+const container = document.getElementById('canvasContainer');
+
+let trackImage = null;
+let checkpoints = [];
+let currentPoints = [];
+
+let scale = 1;
+let offsetX = 0, offsetY = 0;
+let isDragging = false;
+let dragStartX = 0, dragStartY = 0;
+
+/* ---------- IMAGE LOAD ---------- */
+document.getElementById('imageUpload').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        trackImage = new Image();
+        trackImage.onload = () => {
+            canvas.width = trackImage.width;
+            canvas.height = trackImage.height;
+            redraw();
+            updateStatus('Image loaded – click to add checkpoints');
+        };
+        trackImage.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+/* ---------- CLICK TO ADD ---------- */
+canvas.addEventListener('click', e => {
+    if (!trackImage) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left - offsetX) / scale;
+    const y = (e.clientY - rect.top - offsetY) / scale;
+
+    currentPoints.push([x, y]);
+    redraw();
+
+    if (currentPoints.length === 1) {
+        updateStatus('Click second point');
+    } else if (currentPoints.length === 2) {
+        checkpoints.push([currentPoints[0], currentPoints[1]]);
+        currentPoints = [];
+        updateCheckpointList();
+        exportCode();
+        redraw();
+        const dist = checkpoints.length > 1 ? distanceBetweenLastTwo() : 0;
+        updateStatus(`Checkpoint ${checkpoints.length} added – Δ${dist.toFixed(0)}px`);
+    }
+});
+
+/* ---------- ZOOM / PAN ---------- */
+container.addEventListener('wheel', e => {
+    e.preventDefault();
+    const zoom = 1 - e.deltaY * 0.001;
+    scale = Math.max(0.2, Math.min(5, scale * zoom));
+    redraw();
+});
+container.addEventListener('mousedown', e => {
+    isDragging = true;
+    dragStartX = e.clientX - offsetX;
+    dragStartY = e.clientY - offsetY;
+    container.style.cursor = 'grabbing';
+});
+container.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    offsetX = e.clientX - dragStartX;
+    offsetY = e.clientY - dragStartY;
+    redraw();
+});
+container.addEventListener('mouseup', () => { isDragging = false; container.style.cursor = 'grab'; });
+container.addEventListener('mouseleave', () => { isDragging = false; container.style.cursor = 'grab'; });
+
+/* ---------- DRAWING ---------- */
+function redraw() {
+    ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
+    ctx.clearRect(-offsetX/scale, -offsetY/scale, canvas.width/scale, canvas.height/scale);
+    if (trackImage) ctx.drawImage(trackImage, 0, 0);
+
+    checkpoints.forEach((cp, i) => {
+        const [p1, p2] = cp;
+        // line
+        ctx.strokeStyle = '#00b894';
+        ctx.lineWidth = 4 / scale;
+        ctx.beginPath();
+        ctx.moveTo(p1[0], p1[1]);
+        ctx.lineTo(p2[0], p2[1]);
+        ctx.stroke();
+
+        // endpoints
+        [p1, p2].forEach(p => {
+            ctx.beginPath();
+            ctx.arc(p[0], p[1], 6/scale, 0, Math.PI*2);
+            ctx.fillStyle = '#00b894';
+            ctx.fill();
+        });
+
+        // number
+        const mid = [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2];
+        ctx.fillStyle = 'white';
+        ctx.font = `${16/scale}px Arial`;
+        ctx.fillText(i+1, mid[0]-6/scale, mid[1]+6/scale);
+
+        // distance to previous
+        if (i > 0) {
+            const prevMid = getMid(checkpoints[i-1]);
+            const d = Math.hypot(mid[0]-prevMid[0], mid[1]-prevMid[1]);
+
+            ctx.strokeStyle = '#fdcb6e';
+            ctx.lineWidth = 2 / scale;
+            ctx.setLineDash([6/scale,4/scale]);
+            ctx.beginPath();
+            ctx.moveTo(prevMid[0], prevMid[1]);
+            ctx.lineTo(mid[0], mid[1]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            const labelX = (prevMid[0]+mid[0])/2;
+            const labelY = (prevMid[1]+mid[1])/2;
+            ctx.fillStyle = '#fdcb6e';
+            ctx.font = `${14/scale}px Arial`;
+            ctx.fillText(`${d.toFixed(0)}`, labelX, labelY-8/scale);
+        }
+    });
+
+    // current segment
+    currentPoints.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], 6/scale, 0, Math.PI*2);
+        ctx.fillStyle = '#667eea';
+        ctx.fill();
+    });
+    if (currentPoints.length === 2) {
+        ctx.strokeStyle = '#667eea';
+        ctx.lineWidth = 3/scale;
+        ctx.setLineDash([8/scale,5/scale]);
+        ctx.beginPath();
+        ctx.moveTo(currentPoints[0][0], currentPoints[0][1]);
+        ctx.lineTo(currentPoints[1][0], currentPoints[1][1]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+}
+
+/* ---------- HELPERS ---------- */
+function getMid(cp) { const [a,b]=cp; return [(a[0]+b[0])/2, (a[1]+b[1])/2]; }
+function distanceBetweenLastTwo() {
+    if (checkpoints.length < 2) return 0;
+    const a = getMid(checkpoints[checkpoints.length-2]);
+    const b = getMid(checkpoints[checkpoints.length-1]);
+    return Math.hypot(b[0]-a[0], b[1]-a[1]);
+}
+
+/* ---------- UI ---------- */
+function updateStatus(txt) {
+    document.getElementById('statusText').textContent = txt;
+    document.getElementById('checkpointCount').textContent = checkpoints.length;
+}
+function clearCurrent() { currentPoints=[]; updateStatus('Current cleared'); redraw(); }
+function clearAll() {
+    if (confirm('Delete all checkpoints?')) {
+        checkpoints=[]; currentPoints=[];
+        updateStatus('All cleared'); updateCheckpointList(); exportCode(); redraw();
+    }
+}
+function editCheckpoint(i) {
+    currentPoints = [...checkpoints[i]];
+    checkpoints.splice(i,1);
+    updateCheckpointList(); redraw();
+    updateStatus('Edit mode – click to adjust');
+}
+function deleteCheckpoint(i) {
+    checkpoints.splice(i,1);
+    updateCheckpointList(); redraw();
+    updateStatus(`CP ${i+1} deleted`);
+}
+
+/* ---------- LIST ---------- */
+function updateCheckpointList() {
+    const list = document.getElementById('checkpointList');
+    list.innerHTML = '';
+    checkpoints.forEach((cp,i) => {
+        const [p1,p2] = cp;
+        const dist = i>0 ? Math.hypot(
+            getMid(cp)[0]-getMid(checkpoints[i-1])[0],
+            getMid(cp)[1]-getMid(checkpoints[i-1])[1]
+        ).toFixed(0) : '';
+        const distTxt = dist ? ` | Δ${dist}px` : '';
+        const div = document.createElement('div');
+        div.className='checkpoint-item';
+        div.innerHTML = `
+            <div>CP ${i+1}: (${p1[0].toFixed(0)},${p1[1].toFixed(0)})→(${p2[0].toFixed(0)},${p2[1].toFixed(0)})${distTxt}</div>
+            <div>
+                <button class="btn-small" onclick="editCheckpoint(${i})">Edit</button>
+                <button class="btn-small" onclick="deleteCheckpoint(${i})">Delete</button>
+            </div>`;
+        list.appendChild(div);
+    });
+}
+
+/* ---------- EXPORT ---------- */
+function exportCode() {
+    let code = 'TRACK_CHECKPOINT_ZONES = [\n';
+    checkpoints.forEach((cp,i) => {
+        const [p1,p2] = cp;
+        const dist = i>0 ? Math.hypot(
+            getMid(cp)[0]-getMid(checkpoints[i-1])[0],
+            getMid(cp)[1]-getMid(checkpoints[i-1])[1]
+        ).toFixed(0) : 'N/A';
+        code += `    [(${p1[0].toFixed(0)}, ${p1[1].toFixed(0)}), (${p2[0].toFixed(0)}, ${p2[1].toFixed(0)})],  # CP ${i+1} | Δ${dist}px\n`;
+    });
+    code += ']';
+    const ta = document.getElementById('codeOutput');
+    ta.value = code;
+    ta.select();
+    document.execCommand('copy');
+    updateStatus('Code copied with pixel distances');
+}
+
+/* ---------- INITIAL STATE ---------- */
+updateStatus('Load an image');
+</script>
+</body>
+</html>

@@ -29,7 +29,7 @@ class Car(pygame.sprite.Sprite):
 
         # Ray sensors - simplified to single distance list
         self.ray_length = 400
-        self.ray_angles = [0, 15, -15, 30, -30, 45, -45, 60, -60, 90, -90]
+        self.ray_angles = [-90, -75, -60, -45, -30, -20, -15, -10, 0, 10, 15, 20, 30, 45, 60, 75, 90]
         self.ray_distances = [self.ray_length] * len(self.ray_angles)
         self.ray_collision_points = [None] * len(self.ray_angles)
         

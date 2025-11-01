@@ -1,7 +1,7 @@
 import pygame
 import sys
 from scripts.Constants import *
-from scripts.utils import MenuScreen, calculate_ui_constants, scale_font
+from scripts.utils import MenuScreen, calculate_ui_constants
 from scripts.GameManager import game_state_manager
 from pathlib import Path
 

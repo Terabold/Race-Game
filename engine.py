@@ -3,7 +3,6 @@ from scripts.Constants import DISPLAY_SIZE, FPS, FONT, MENUBG
 from scripts.Game import Game
 from scripts.menu import Menu
 from scripts.GameManager import game_state_manager
-from scripts.utils import scale_font
 from scripts.trainer import Trainer
 
 class Engine:
