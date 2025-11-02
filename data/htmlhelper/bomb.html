@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Bomb Marker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #111827;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header {
+            background: #1f2937;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .title { font-size: 28px; font-weight: bold; margin-bottom: 8px; }
+        .subtitle { color: #9ca3af; font-size: 14px; }
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+        .btn-secondary { background: #374151; color: white; }
+        .btn-secondary:hover:not(:disabled) { background: #4b5563; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover:not(:disabled) { background: #b91c1c; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-success:hover:not(:disabled) { background: #15803d; }
+        .btn-purple { background: #9333ea; color: white; }
+        .btn-purple:hover:not(:disabled) { background: #7e22ce; }
+        .upload-area {
+            border: 2px dashed #4b5563;
+            border-radius: 8px;
+            padding: 60px;
+            text-align: center;
+            background: #374151;
+            cursor: pointer;
+        }
+        .import-box {
+            background: #374151;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: #1f2937;
+            border: 1px solid #4b5563;
+            border-radius: 6px;
+            padding: 12px;
+            color: white;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #9333ea;
+        }
+        #canvas-container {
+            background: #374151;
+            border-radius: 8px;
+            overflow: auto;
+            height: 70vh;
+            position: relative;
+        }
+        #canvas {
+            cursor: crosshair;
+            display: block;
+        }
+        #canvas.panning {
+            cursor: grabbing;
+        }
+        .bomb {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #ef4444;
+            border: 1px solid white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .bomb:hover {
+            background: #dc2626;
+        }
+        .info {
+            color: #9ca3af;
+            font-size: 14px;
+            margin-top: 12px;
+        }
+        .bomb-count {
+            font-size: 18px;
+            font-weight: 600;
+            text-align: right;
+        }
+        input[type="file"] { display: none; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <div>
+                    <div class="title">Track Bomb Marker</div>
+                    <div class="subtitle">Click to place bombs | Shift+Drag to pan | Scroll to zoom</div>
+                </div>
+                <div class="bomb-count">Bombs: <span id="bomb-count">0</span></div>
+            </div>
+            
+            <div id="upload-section">
+                <div class="upload-area" onclick="document.getElementById('file-input').click()">
+                    <div style="font-size: 48px; margin-bottom: 16px;">📤</div>
+                    <button class="btn-primary">Upload Track Image</button>
+                </div>
+                <input type="file" id="file-input" accept="image/*">
+                
+                <div style="text-align: center; margin-top: 16px;">
+                    <button class="btn-purple" onclick="toggleImport()">📄 Import Existing Bomb List</button>
+                </div>
+                
+                <div id="import-box" class="import-box hidden">
+                    <h3 style="margin-bottom: 8px;">Import Bomb List</h3>
+                    <p style="color: #9ca3af; font-size: 13px; margin-bottom: 12px;">Paste your Python BOMB_LIST here:</p>
+                    <textarea id="import-text" placeholder="BOMB_LIST = [(296, 119), (359, 120), (340, 93), ...]"></textarea>
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button class="btn-purple" onclick="importBombs()">Import</button>
+                        <button class="btn-secondary" onclick="toggleImport()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="controls-section" class="hidden">
+                <div class="controls">
+                    <button class="btn-secondary" onclick="document.getElementById('file-input').click()">📤 Change Image</button>
+                    <button class="btn-purple" onclick="toggleImport()">📄 Import List</button>
+                    <button class="btn-secondary" onclick="zoomIn()">🔍 Zoom In</button>
+                    <button class="btn-secondary" onclick="zoomOut()">🔍 Zoom Out</button>
+                    <button class="btn-secondary" onclick="resetView()">Reset View</button>
+                    <button class="btn-danger" onclick="clearAll()" id="clear-btn">🗑️ Clear All</button>
+                    <button class="btn-success" onclick="exportPython()" id="export-btn">💾 Export Python</button>
+                </div>
+                
+                <div id="import-box-2" class="import-box hidden">
+                    <h3 style="margin-bottom: 8px;">Import Bomb List</h3>
+                    <p style="color: #9ca3af; font-size: 13px; margin-bottom: 12px;">Paste your Python BOMB_LIST here:</p>
+                    <textarea id="import-text-2" placeholder="BOMB_LIST = [(296, 119), (359, 120), (340, 93), ...]"></textarea>
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button class="btn-purple" onclick="importBombs()">Import</button>
+                        <button class="btn-secondary" onclick="toggleImport()">Cancel</button>
+                    </div>
+                </div>
+                
+                <div id="canvas-container">
+                    <canvas id="canvas"></canvas>
+                </div>
+                
+                <div class="info">
+                    Zoom: <span id="zoom-level">100</span>% | Position: (<span id="pos-x">0</span>, <span id="pos-y">0</span>)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let bombs = [];
+        let image = null;
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+        let isPanning = false;
+        let startX = 0;
+        let startY = 0;
+        let canvas, ctx;
+
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        image = img;
+                        setupCanvas();
+                        document.getElementById('upload-section').classList.add('hidden');
+                        document.getElementById('controls-section').classList.remove('hidden');
+                        scale = 1;
+                        translateX = 0;
+                        translateY = 0;
+                        draw();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function setupCanvas() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            canvas.width = image.width;
+            canvas.height = image.height;
+            
+            canvas.addEventListener('click', handleClick);
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('mouseleave', handleMouseUp);
+            canvas.addEventListener('wheel', handleWheel, { passive: false });
+        }
+
+        function handleClick(e) {
+            if (isPanning) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.round((e.clientX - rect.left) / scale);
+            const y = Math.round((e.clientY - rect.top) / scale);
+            
+            const clickedBomb = bombs.findIndex(b => {
+                const dx = b.x - x;
+                const dy = b.y - y;
+                return Math.sqrt(dx*dx + dy*dy) < 5 / scale;
+            });
+            
+            if (clickedBomb !== -1) {
+                bombs.splice(clickedBomb, 1);
+            } else {
+                bombs.push({ x, y, id: Date.now() });
+            }
+            
+            updateBombCount();
+            draw();
+        }
+
+        function handleMouseDown(e) {
+            if (e.shiftKey) {
+                isPanning = true;
+                canvas.classList.add('panning');
+                startX = e.clientX - translateX;
+                startY = e.clientY - translateY;
+                e.preventDefault();
+            }
+        }
+
+        function handleMouseMove(e) {
+            if (isPanning) {
+                translateX = e.clientX - startX;
+                translateY = e.clientY - startY;
+                updatePosition();
+                draw();
+            }
+        }
+
+        function handleMouseUp() {
+            isPanning = false;
+            canvas.classList.remove('panning');
+        }
+
+        function handleWheel(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            scale = Math.min(Math.max(0.5, scale * delta), 5);
+            updateZoom();
+            draw();
+        }
+
+        function draw() {
+            if (!image) return;
+            
+            const container = document.getElementById('canvas-container');
+            canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            canvas.style.transformOrigin = '0 0';
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(image, 0, 0);
+            
+            bombs.forEach(bomb => {
+                ctx.fillStyle = '#ef4444';
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(bomb.x, bomb.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            });
+        }
+
+        function zoomIn() {
+            scale = Math.min(scale * 1.2, 5);
+            updateZoom();
+            draw();
+        }
+
+        function zoomOut() {
+            scale = Math.max(scale * 0.8, 0.5);
+            updateZoom();
+            draw();
+        }
+
+        function resetView() {
+            scale = 1;
+            translateX = 0;
+            translateY = 0;
+            updateZoom();
+            updatePosition();
+            draw();
+        }
+
+        function clearAll() {
+            if (confirm('Clear all bombs?')) {
+                bombs = [];
+                updateBombCount();
+                draw();
+            }
+        }
+
+        function toggleImport() {
+            const box1 = document.getElementById('import-box');
+            const box2 = document.getElementById('import-box-2');
+            box1.classList.toggle('hidden');
+            box2.classList.toggle('hidden');
+        }
+
+        function importBombs() {
+            const text = document.getElementById('import-text').value || document.getElementById('import-text-2').value;
+            try {
+                const regex = /\((\d+),\s*(\d+)\)/g;
+                const matches = [...text.matchAll(regex)];
+                bombs = matches.map(match => ({
+                    x: parseInt(match[1]),
+                    y: parseInt(match[2]),
+                    id: Date.now() + Math.random()
+                }));
+                document.getElementById('import-text').value = '';
+                document.getElementById('import-text-2').value = '';
+                toggleImport();
+                updateBombCount();
+                draw();
+            } catch (error) {
+                alert('Error parsing bomb list. Please check the format.');
+            }
+        }
+
+        function exportPython() {
+            let output = 'BOMB_LIST = [\n';
+            bombs.forEach((bomb, i) => {
+                output += `    (${bomb.x}, ${bomb.y})`;
+                if (i < bombs.length - 1) output += ',';
+                output += '\n';
+            });
+            output += ']';
+            
+            const blob = new Blob([output], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bomb_list.py';
+            a.click();
+        }
+
+        function updateBombCount() {
+            document.getElementById('bomb-count').textContent = bombs.length;
+            document.getElementById('clear-btn').disabled = bombs.length === 0;
+            document.getElementById('export-btn').disabled = bombs.length === 0;
+        }
+
+        function updateZoom() {
+            document.getElementById('zoom-level').textContent = Math.round(scale * 100);
+        }
+
+        function updatePosition() {
+            document.getElementById('pos-x').textContent = Math.round(translateX);
+            document.getElementById('pos-y').textContent = Math.round(translateY);
+        }
+
+        updateBombCount();
+    </script>
+</body>
+</html>

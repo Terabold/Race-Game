@@ -1,0 +1,35 @@
+# TEST SCENARIOS TO VERIFY:
+
+# 1. Menu Navigation
+# - [ ] Start game with 1 player
+# - [ ] Start game with 2 players
+# - [ ] Start game with AI vs Human
+# - [ ] Start game with AI vs AI
+# - [ ] Return to menu from pause
+# - [ ] Start training mode
+
+# 2. Gameplay
+# - [ ] Car collision with walls
+# - [ ] Car collision with finish line (wrong side)
+# - [ ] Car crosses finish line correctly
+# - [ ] Both cars finish
+# - [ ] Time runs out
+# - [ ] Obstacle collision
+# - [ ] Pause and resume
+# - [ ] Restart after finish
+# - [ ] Restart after crash
+
+# 3. Training
+# - [ ] Training starts and saves
+# - [ ] Training resumes from checkpoint
+# - [ ] Toggle visualization
+# - [ ] Return to menu from training
+# - [ ] Model saves on exit
+
+# 4. Edge Cases
+# - [ ] Missing asset files
+# - [ ] Corrupted model file
+# - [ ] No sound device
+# - [ ] Very high FPS (>1000)
+# - [ ] Window resize
+# - [ ] Alt+Tab during training
