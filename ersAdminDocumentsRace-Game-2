@@ -1,0 +1,73 @@
+[33mda653f2[m[33m ([m[1;31morigin/main[m[33m)[m more models few fixes
+[33mb7c3e5e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m a
+[33md0d3d05[m a
+[33me6864cd[m videofix
+[33ma620bf1[m videofix
+[33m85ce8af[m Reconnect repository
+[33mc1eac8c[m Reconnect repository
+[33mcf81032[m checkpoint + 80% winrate
+[33mac96cc3[m temporary save with checkpoints
+[33m63d78fa[m journy
+[33m95e7687[m stable model 80%-70% winrate dodge 80% bombs ~
+[33md9bfece[m ai and changes
+[33m9899a00[m menu and game base
+[33m14cbe57[m #
+[33mf461f2b[m #
+[33mcf00abc[m #
+[33m6d04f3f[m #
+[33me8f0aad[m #
+[33m4b077ef[m messing with ai things
+[33m751bd22[m style options
+[33m3e1e31d[m fix
+[33m4ecbf62[m new menu :)
+[33m1f3a1c3[m Merge branch 'main' of https://github.com/Terabold/Race-Game-Ai-MDP
+[33m02ce32f[m many fixes full game * status fix * gui option fix * able to choose trainer or game * raycasting fix
+[33md309605[m Create README.md
+[33m374c4ee[m check
+[33m28741ab[m not sure if i should keep, will ask teacher (now prevents rotation into borders, because sprite is better masking) pos: pixel perfect will never get into border. cons: might feel a bit clunky when getting stuck while cutting short in track and coliding
+[33m863e552[m gui
+[33m4fd9490[m bug fixes
+[33m1961b80[m better colision
+[33m3b6ae09[m fix
+[33m1121b12[m 1map
+[33ma542f23[m changes
+[33m1fa426d[m fixes draw seperation
+[33me524f65[m changes
+[33m6834d45[m texture changes
+[33m0f206d7[m idea
+[33m2090840[m some changes and bug fixes
+[33ma2ec37e[m gui improvements
+[33me884464[m raycasting on car and movement testing
+[33m21f06a1[m finish fix, human agent inheritance, time bonus texture
+[33m64bcdb3[m multiplayer/single player fixes
+[33mb4ee968[m shit implementation of 2 players
+[33m2bf355b[m gui polish
+[33m1ce1670[m timebonuses
+[33me18bc10[m few tweaks and spirt checkpoint
+[33mff21465[m Menu with car color, lobby music, game sound toggle, auto respawn and a few tweaks
+[33m07201a1[m checkpoints and minor optimizations
+[33mf4bdaaa[m escape to pause, tweaks for fps
+[33m155529a[m level changes
+[33m4e15e69[m humand agent and countdown in environment
+[33mb3b4483[m map levels
+[33m76198e3[m Text and pure beauty (fonts)
+[33m6821226[m sorting code
+[33m71f4537[m drift + speedometer
+[33m8dbfce6[m speedometer + movement fixes
+[33ma9bafa5[m Revert "driftttttttt"
+[33m5ede7a2[m driftttttttt
+[33m57a9d41[m environment
+[33m8f8ea67[m sort main
+[33ma13be80[m MDP Stracture
+[33m2b2787d[m sorting code
+[33m0091cd2[m time saves
+[33m3e50328[m better music no phase through walls!!!! more sounds better textures and no need for cheater detection
+[33m52e6d31[m better car, sounds, graphic addons and cheater detection
+[33m8372113[m remove car sound its ass
+[33m1eac0e5[m bad car sound
+[33m757cae0[m 2 sound effects and graphic handler and improved action managment
+[33mbe67fdd[m velocity display
+[33m260963b[m todolist download for the developers
+[33m6f65635[m font update!
+[33mf4da936[m base game
+[33mb00c8df[m first commit

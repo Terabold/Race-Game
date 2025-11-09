@@ -29,7 +29,7 @@ class Car(pygame.sprite.Sprite):
 
         # Ray sensors - simplified to single distance list
         self.ray_length = 400
-        self.ray_angles = [-90, -75, -60, -45, -30, -20, -15, -10, 0, 10, 15, 20, 30, 45, 60, 75, 90]
+        self.ray_angles = [-75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75]
         self.ray_distances = [self.ray_length] * len(self.ray_angles)
         self.ray_collision_points = [None] * len(self.ray_angles)
         
@@ -42,7 +42,7 @@ class Car(pygame.sprite.Sprite):
     def cast_rays(self, border_mask, obstacle_group=None):
         """Cast rays and store minimum distance (border or obstacle)"""
         car_rotation = -self.angle
-        step = 1
+        step = 8
         width, height = border_mask.get_size()
 
         for idx, direction in enumerate(self.ray_directions):
@@ -90,10 +90,11 @@ class Car(pygame.sprite.Sprite):
     def rotate(self, left=False, right=False):
         if not self.can_move:
             return
-        if left:
-            self.angle += self.rotation_velocity
-        elif right:
-            self.angle -= self.rotation_velocity
+        turn = 0
+        if left: turn += 1
+        if right: turn -= 1
+        # smooth steering, scaled by speed
+        self.angle += turn * self.rotation_velocity * (0.4 + 0.6 * (abs(self.velocity) / self.max_velocity))
 
         self.image = pygame.transform.rotate(self.original_image, self.angle)
         old_center = self.rect.center

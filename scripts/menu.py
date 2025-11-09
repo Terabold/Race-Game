@@ -1,3 +1,4 @@
+# menu.py - FIXED with proper initialization
 import pygame
 import sys
 from scripts.Constants import *
@@ -6,7 +7,8 @@ from scripts.GameManager import game_state_manager
 from pathlib import Path
 
 
-class Menu:
+class MainMenu:
+    """Main Menu Screen Handler"""
     def __init__(self, screen, clock):
         pygame.font.init()
         self.screen = screen
@@ -21,29 +23,9 @@ class Menu:
             self.display_size
         )
 
-        # Initialize menus
-        self.main_menu = MainMenuScreen(self)
-        self.settings_menu = RaceSettingsScreen(self)
-        self.active_menu = self.main_menu
-        self.main_menu.enable()
-
-    def show_settings_menu(self):
-        self.main_menu.disable()
-        self.settings_menu.enable()
-        self.active_menu = self.settings_menu
-
-    def return_to_main(self):
-        self.settings_menu.disable()
-        self.main_menu.enable()
-        self.active_menu = self.main_menu
-
-    def start_game(self):
-        game_state_manager.training_mode = False
-        game_state_manager.setState('game')
-
-    def start_training(self):
-        game_state_manager.training_mode = True
-        game_state_manager.setState('training')
+        # Initialize menu screen
+        self.menu_screen = MainMenuScreen(self)
+        self.menu_screen.enable()  # FIXED: Enable on init
 
     def quit_game(self):
         pygame.time.delay(300)
@@ -51,22 +33,64 @@ class Menu:
         sys.exit()
 
     def run(self):
+        """Main menu render loop"""
         self.screen.blit(self.background, (0, 0))
 
         events = pygame.event.get()
         for event in events:
             if event.type == pygame.QUIT:
                 self.quit_game()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if self.active_menu == self.settings_menu:
-                    self.return_to_main()
 
         self.clock.tick(60)
-        self.active_menu.update(events)
-        self.active_menu.draw(self.screen)
+        self.menu_screen.update(events)
+        self.menu_screen.draw(self.screen)
 
+
+class SettingsMenu:
+    """Settings Menu Screen Handler"""
+    def __init__(self, screen, clock):
+        pygame.font.init()
+        self.screen = screen
+        self.clock = clock
+        self.display_size = (WIDTH, HEIGHT)
+        self.font_path = MENUFONT
+        self.UI_CONSTANTS = calculate_ui_constants(self.display_size)
+
+        # Background
+        self.background = pygame.transform.scale(
+            pygame.image.load(MENU), 
+            self.display_size
+        )
+
+        # Initialize menu screen
+        self.menu_screen = RaceSettingsScreen(self)
+        self.menu_screen.enable()  # FIXED: Enable on init
+
+    def run(self):
+        """Settings menu render loop"""
+        self.screen.blit(self.background, (0, 0))
+
+        events = pygame.event.get()
+        for event in events:
+            if event.type == pygame.QUIT:
+                pygame.time.delay(300)
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                # Return to main menu
+                game_state_manager.setState('main_menu')
+
+        self.clock.tick(60)
+        self.menu_screen.update(events)
+        self.menu_screen.draw(self.screen)
+
+
+# ============================================================================
+# MENU SCREEN IMPLEMENTATIONS
+# ============================================================================
 
 class MainMenuScreen(MenuScreen):
+    """Main Menu UI"""
     def initialize(self):
         self.title = "RACING GAME"
         self.clear_buttons()
@@ -79,8 +103,8 @@ class MainMenuScreen(MenuScreen):
 
         # Button configurations: (text, action, color)
         buttons = [
-            ('PLAY', self.menu.show_settings_menu, None),
-            ('TRAIN AI', self.menu.start_training, (70, 100, 180)),
+            ('PLAY', lambda: game_state_manager.setState('settings_menu'), GREEN),
+            ('TRAIN AI', lambda: game_state_manager.setState('training'), (70, 100, 180)),
             ('QUIT', self.menu.quit_game, (200, 50, 50))
         ]
 
@@ -95,6 +119,7 @@ class MainMenuScreen(MenuScreen):
 
 
 class RaceSettingsScreen(MenuScreen):
+    """Race Settings UI"""
     # UI Colors
     COLORS = {
         "title": (255, 181, 33),
@@ -227,7 +252,7 @@ class RaceSettingsScreen(MenuScreen):
         back_y = int(screen_h * 0.02)
         back_width = int(screen_w * 0.08)
         self.create_button(
-            "←", self.menu.return_to_main,
+            "←", lambda: game_state_manager.setState('main_menu'),
             back_x, back_y, back_width
         )
 
@@ -255,14 +280,14 @@ class RaceSettingsScreen(MenuScreen):
 
     def _start_race(self):
         if game_state_manager.player1_selection or game_state_manager.player2_selection:
-            self.menu.start_game()
+            game_state_manager.setState('game')
 
     # === Drawing ===
     
     def draw(self, surface):
-        if not self.enabled:
+        if not self.enabled:  # FIXED: Check enabled flag
             return
-
+            
         self._draw_title(surface)
         self._draw_section_labels(surface)
         self._draw_all_buttons(surface)
@@ -438,9 +463,9 @@ class RaceSettingsScreen(MenuScreen):
 
     def update(self, events):
         """Handle user input"""
-        if not self.enabled:
+        if not self.enabled:  # FIXED: Check enabled flag
             return
-
+            
         mouse_pos = pygame.mouse.get_pos()
         
         # Update hover states
